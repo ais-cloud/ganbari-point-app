@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>まいにちペット</title>
+<style>
+/* ===== BASE ===== */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Hiragino Maru Gothic ProN','Noto Sans JP',sans-serif;background:#f0f4ff;display:flex;justify-content:center;min-height:100vh}
+#app{width:100%;max-width:430px;min-height:100vh;position:relative;display:flex;flex-direction:column;background:#f0f4ff}
+
+/* ===== SCREENS ===== */
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden}
+.screen.active{display:flex}
+
+/* ===== TAB BAR ===== */
+#tabbar{display:flex;background:#fff;border-top:2px solid #e8e8f0;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:100}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 12px;border:none;background:none;cursor:pointer;font-size:11px;font-weight:700;color:#aaa;gap:2px;transition:color .15s}
+.tab-btn .ti{font-size:24px;line-height:1}
+.tab-btn.active{color:#ff7043}
+#tabbar.hidden{display:none}
+
+/* ===== SCROLL WRAPPER ===== */
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 90px}
+
+/* ===== CARD ===== */
+.card{background:#fff;border-radius:20px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.07);margin-bottom:12px}
+
+/* ===== BUTTONS ===== */
+.btn{display:flex;align-items:center;justify-content:center;border:none;border-radius:16px;cursor:pointer;font-weight:900;transition:transform .12s,opacity .15s}
+.btn:active{transform:scale(.95)}
+.btn-primary{background:linear-gradient(135deg,#ff7043,#ff5252);color:#fff;font-size:20px;padding:18px;width:100%;border-radius:18px;box-shadow:0 4px 14px rgba(255,112,67,.4)}
+.btn-secondary{background:#f0f0f5;color:#666;font-size:18px;padding:14px;width:100%;border-radius:18px}
+.btn-disabled{background:#e0e0e0!important;color:#bbb!important;cursor:default;box-shadow:none!important}
+
+/* ===== PET SELECTION ===== */
+#screen-select{background:linear-gradient(160deg,#fff9e6,#ffecd2)}
+.select-title{text-align:center;padding:32px 20px 16px}
+.select-title h1{font-size:28px;font-weight:900;color:#333;margin-bottom:6px}
+.select-title p{font-size:17px;color:#888}
+.pet-preview{margin:0 16px 16px;background:rgba(255,255,255,.85);border-radius:24px;padding:24px;text-align:center;min-height:120px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px}
+.preview-emoji{font-size:72px;animation:pop .3s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{transform:scale(.6);opacity:.4}to{transform:scale(1);opacity:1}}
+.preview-name{font-size:22px;font-weight:900}
+.pet-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.pet-card{background:#fff;border-radius:20px;padding:18px 10px;text-align:center;cursor:pointer;border:3px solid transparent;transition:all .18s;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.pet-card:active{transform:scale(.97)}
+.pet-card.sel{transform:scale(1.04)}
+.pet-card[data-t=dog].sel{border-color:#ff7043;background:#fff4f0}
+.pet-card[data-t=cat].sel{border-color:#9c27b0;background:#f9f0ff}
+.pet-card[data-t=rabbit].sel{border-color:#e91e8c;background:#fff0f6}
+.pet-card[data-t=rnd].sel{border-color:#2196f3;background:#f0f7ff}
+.pet-card .pe{font-size:44px}
+.pet-card .pn{font-size:19px;font-weight:900;margin-top:6px}
+.confirm-wrap{padding:16px}
+
+/* ===== HOME ===== */
+#screen-home{background:linear-gradient(160deg,#fff9e6,#ffecd2)}
+.home-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0}
+.home-header h1{font-size:24px;font-weight:900;color:#333}
+.change-pet-btn{background:#fff;border:2px solid #ffcc80;border-radius:14px;padding:6px 12px;font-size:14px;font-weight:700;color:#ff7043;cursor:pointer}
+.change-pet-btn:active{opacity:.7}
+
+/* チケット */
+.ticket-bar{display:flex;align-items:center;gap:10px;background:#fff;border-radius:16px;padding:12px 16px;box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.ticket-bar .ticon{font-size:28px}
+.ticket-bar .tcount{font-size:24px;font-weight:900;color:#333}
+.ticket-bar .thint{margin-left:auto;font-size:13px;color:#aaa}
+.ticket-bar .thint.ok{color:#ff7043;font-weight:700}
+
+/* ペット表示 */
+.pet-box{text-align:center;padding:8px 0}
+.pet-big{font-size:90px;display:inline-block;animation:float 2.5s ease-in-out infinite;position:relative}
+@keyframes float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-8px) scale(1.04)}}
+.pet-acc-top{font-size:28px;display:block;margin-bottom:-10px}
+.pet-acc-bot{font-size:26px;display:block;margin-top:-10px}
+.pet-face{font-size:30px;margin:4px 0}
+.pet-name-disp{font-size:22px;font-weight:900;color:#333}
+.pet-mood{display:inline-block;font-size:15px;font-weight:700;padding:4px 14px;border-radius:12px;margin-top:4px}
+
+/* ゲージ */
+.gauge-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.gauge-row:last-child{margin-bottom:0}
+.g-icon{font-size:20px;width:24px;text-align:center}
+.g-label{font-size:15px;font-weight:700;width:44px}
+.g-track{flex:1;height:20px;background:#eee;border-radius:10px;overflow:hidden}
+.g-fill{height:100%;border-radius:10px;transition:width .5s cubic-bezier(.34,1.56,.64,1)}
+.g-num{font-size:13px;font-weight:900;width:26px;text-align:right;color:#777}
+.care-btn{width:60px;height:48px;border-radius:14px;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:900;color:#fff;transition:transform .12s}
+.care-btn:active{transform:scale(.88)}
+.care-btn.grey{background:#e0e0e0!important;color:#bbb;cursor:default}
+.care-btn .ci{font-size:18px;line-height:1}
+
+/* 全満タン */
+.all-full{background:linear-gradient(135deg,#fff9c4,#ffe082);border:2px dashed #ffc107;border-radius:18px;padding:14px;text-align:center;margin-bottom:12px}
+.all-full h2{font-size:22px;font-weight:900;color:#f57f17}
+.all-full p{font-size:13px;color:#888;margin:4px 0 10px}
+.celebrate-btn{background:linear-gradient(135deg,#ff7043,#ffd54f);color:#fff;border:none;border-radius:14px;padding:10px 20px;font-size:16px;font-weight:900;cursor:pointer}
+.celebrate-btn:active{opacity:.85}
+
+/* アクセサリー */
+.acc-panel .acc-title{font-size:17px;font-weight:900;margin-bottom:10px}
+.acc-subtitle{font-size:11px;color:#aaa;margin-bottom:10px}
+.acc-row{display:flex;gap:8px}
+.acc-btn{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px;border-radius:14px;border:2px solid #e0e0e0;background:#fff;cursor:pointer;font-size:12px;font-weight:700;color:#aaa;gap:4px;transition:all .15s}
+.acc-btn.sel{border-color:#ff7043;background:#fff4f0;color:#ff7043}
+.acc-emoji{font-size:26px}
+
+/* reaction badge */
+.react-badge{position:absolute;top:-10px;right:10px;text-align:center;pointer-events:none;animation:reactUp 2s forwards}
+@keyframes reactUp{0%{opacity:0;transform:translateY(10px)}15%{opacity:1;transform:translateY(0)}80%{opacity:1;transform:translateY(-20px)}100%{opacity:0;transform:translateY(-30px)}}
+.react-badge .rb-emoji{font-size:36px;display:block}
+.react-badge .rb-plus{font-size:17px;font-weight:900}
+
+/* ===== QUIZ ===== */
+#screen-quiz{background:linear-gradient(160deg,#e8f5e9,#e3f2fd)}
+.quiz-header{padding:16px 16px 8px;display:flex;align-items:center;justify-content:space-between}
+.quiz-header h1{font-size:22px;font-weight:900;color:#333}
+.quiz-ticket{background:rgba(255,112,67,.12);border-radius:12px;padding:5px 12px;font-size:15px;font-weight:900;color:#ff7043}
+
+/* 問題 */
+.q-phase,.r-phase{display:none}
+.q-phase.active,.r-phase.active{display:block}
+.q-card{background:#fff;border-radius:20px;padding:22px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.07);margin-bottom:14px}
+.q-cat{display:inline-block;font-size:12px;font-weight:900;color:#fff;background:#42a5f5;border-radius:8px;padding:3px 10px;margin-bottom:10px}
+.q-text{font-size:24px;font-weight:900;color:#222;white-space:pre-line;line-height:1.5}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.opt-btn{background:#fff;border:3px solid #e0e0e0;border-radius:16px;padding:18px 10px;font-size:22px;font-weight:900;color:#333;cursor:pointer;transition:all .15s;text-align:center}
+.opt-btn:active{transform:scale(.95);background:#e3f2fd;border-color:#42a5f5}
+.opt-btn.correct{background:#e8f5e9;border-color:#66bb6a;color:#2e7d32}
+.opt-btn.wrong{background:#ffebee;border-color:#ef5350;color:#c62828}
+.opt-btn:disabled{cursor:default}
+
+/* 結果 */
+.r-card{background:#fff;border-radius:20px;padding:22px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.07);margin-bottom:14px}
+.r-verdict{font-size:36px;font-weight:900;margin-bottom:10px}
+.r-verdict.ok{color:#2e7d32}
+.r-verdict.ng{color:#c62828}
+.r-pet{font-size:70px;display:block;margin-bottom:8px}
+.r-pet.jump{animation:jump .4s cubic-bezier(.34,1.56,.64,1) 3}
+@keyframes jump{0%,100%{transform:translateY(0)}50%{transform:translateY(-22px)}}
+.r-msg{font-size:20px;font-weight:900;white-space:pre-line}
+.r-msg.ok{color:#ff7043}
+.r-msg.ng{color:#888}
+.r-ticket{display:flex;align-items:center;gap:10px;background:#fff4f0;border-radius:14px;padding:12px 16px;margin-bottom:14px}
+.r-ticket .rt-i{font-size:26px}
+.r-ticket .rt-t{font-size:20px;font-weight:900}
+.r-ticket .rt-s{font-size:14px;color:#aaa;margin-top:2px}
+.r-answer{background:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,.06);margin-bottom:14px;text-align:left}
+.r-answer .ra-title{font-size:15px;font-weight:700;color:#aaa;margin-bottom:8px}
+.ra-correct{font-size:22px;font-weight:900;color:#2e7d32;display:flex;align-items:center;gap:8px}
+.ra-wrong{font-size:17px;color:#c62828;display:flex;align-items:center;gap:6px;margin-top:6px}
+.r-btn-wrap{display:flex;flex-direction:column;gap:10px}
+.btn-next{display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#42a5f5,#1565c0);color:#fff;border:none;border-radius:18px;padding:20px;font-size:22px;font-weight:900;cursor:pointer;box-shadow:0 5px 16px rgba(66,165,245,.4);width:100%}
+.btn-next:active{transform:scale(.97)}
+.btn-home{display:flex;align-items:center;justify-content:center;gap:8px;background:#f5f5f5;border:2px solid #ddd;color:#666;border-radius:16px;padding:15px;font-size:19px;font-weight:700;cursor:pointer;width:100%}
+.btn-home:active{background:#ebebeb}
+
+/* ===== CALENDAR ===== */
+#screen-calendar{background:linear-gradient(160deg,#e8f5e9,#f3e5f5)}
+.cal-header{padding:16px 16px 8px}
+.cal-header h1{font-size:24px;font-weight:900;color:#333}
+.month-nav{display:flex;align-items:center;justify-content:space-between;padding:4px 0 12px}
+.mn-btn{background:none;border:none;font-size:32px;color:#66bb6a;cursor:pointer;line-height:1;padding:4px}
+.mn-btn:active{opacity:.6}
+.month-label{font-size:22px;font-weight:900;color:#333}
+.cal-card{background:#fff;border-radius:20px;padding:14px;box-shadow:0 2px 12px rgba(0,0,0,.07);margin-bottom:12px}
+.wday-row{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:6px}
+.wday{text-align:center;font-size:13px;font-weight:700;color:#aaa;padding:3px 0}
+.wday.sun{color:#ef5350}.wday.sat{color:#42a5f5}
+.divider{height:1px;background:#f0f0f0;margin-bottom:6px}
+.days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.day-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;height:52px}
+.day-num{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:16px;font-weight:500;color:#333}
+.day-num.today{background:#ff7043;color:#fff;font-weight:900}
+.day-star{font-size:12px;line-height:1;margin-top:1px}
+.study-badge{background:#fff;border-radius:18px;padding:16px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.sb-star{font-size:36px}
+.sb-text{font-size:20px;font-weight:900;color:#333}
+.sb-sub{font-size:13px;color:#aaa;margin-top:3px}
+
+/* ===== CONFETTI ===== */
+#confetti{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;overflow:hidden}
+.cf{position:absolute;top:-12px;width:10px;height:10px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(105vh) rotate(720deg);opacity:0}}
+
+/* ===== MODALS ===== */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;animation:fin .2s}
+@keyframes fin{from{opacity:0}to{opacity:1}}
+.modal{background:#fff;border-radius:26px;padding:30px 24px;text-align:center;max-width:300px;width:90%;animation:pin .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pin{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.modal h2{font-size:26px;font-weight:900;color:#ff7043;margin-bottom:8px}
+.modal p{font-size:16px;color:#555;line-height:1.6;margin-bottom:18px}
+.modal-emoji{font-size:50px;margin-bottom:12px}
+.modal-close{background:#ff7043;color:#fff;border:none;border-radius:14px;padding:12px 28px;font-size:18px;font-weight:900;cursor:pointer}
+.modal-close:active{opacity:.85}
+
+.sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center;animation:fin .2s}
+.sheet{background:#fff;border-radius:24px 24px 0 0;padding:20px 16px 32px;width:100%;max-width:430px;animation:sup .25s ease}
+@keyframes sup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet h3{font-size:17px;font-weight:900;color:#aaa;text-align:center;margin-bottom:14px}
+.sheet-btn{width:100%;padding:16px;border:none;border-radius:14px;font-size:19px;font-weight:900;cursor:pointer;margin-bottom:10px;display:block;text-align:center}
+.sheet-btn.danger{background:rgba(244,67,54,.1);color:#e53935}
+.sheet-btn.cancel{background:#f5f5f5;color:#666}
+.sheet-btn:active{opacity:.75}
+
+/* ===== UTILITIES ===== */
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ========== PET SELECTION ========== -->
+<div id="screen-select" class="screen">
+  <div class="select-title">
+    <h1>ペットをえらんでね！</h1>
+    <p>いっしょにさんすうをがんばろう！</p>
+  </div>
+  <div class="pet-preview" id="sel-preview">
+    <span style="font-size:52px;opacity:.3">❓</span>
+    <span style="font-size:17px;color:#aaa">ペットをえらんでね</span>
+  </div>
+  <div class="pet-grid">
+    <div class="pet-card" data-t="dog"    onclick="pickPet('dog')">   <span class="pe">🐶</span><span class="pn">いぬ</span></div>
+    <div class="pet-card" data-t="cat"    onclick="pickPet('cat')">   <span class="pe">🐱</span><span class="pn">ねこ</span></div>
+    <div class="pet-card" data-t="rabbit" onclick="pickPet('rabbit')"><span class="pe">🐰</span><span class="pn">うさぎ</span></div>
+    <div class="pet-card" data-t="rnd"    onclick="pickPet('rnd')">   <span class="pe">🎲</span><span class="pn">ランダム</span></div>
+  </div>
+  <div class="confirm-wrap">
+    <button class="btn btn-primary hidden" id="confirm-btn" onclick="confirmPet()">
+      <span id="confirm-emoji"></span>&nbsp;このこにきめた！
+    </button>
+  </div>
+</div>
+
+<!-- ========== HOME ========== -->
+<div id="screen-home" class="screen">
+  <div class="home-header">
+    <h1>まいにちペット</h1>
+    <button class="change-pet-btn" onclick="openSettings()">⚙️ せってい</button>
+  </div>
+  <div class="scroll">
+    <!-- チケット -->
+    <div class="ticket-bar card" style="margin-bottom:12px">
+      <span class="ticon">🎫</span>
+      <span class="tcount" id="h-ticket">0まい</span>
+      <span class="thint" id="h-hint">もんだいをとこう！</span>
+    </div>
+    <!-- ペット -->
+    <div class="card" style="text-align:center;position:relative">
+      <span class="pet-acc-top hidden" id="acc-top"></span>
+      <span class="pet-big" id="pet-emoji">🐶</span>
+      <span class="pet-acc-bot hidden" id="acc-bot"></span>
+      <div class="pet-face" id="pet-face">😄</div>
+      <div class="pet-name-disp" id="pet-name">ぽち</div>
+      <div class="pet-mood" id="pet-mood">とてもげんき！</div>
+    </div>
+    <!-- ゲージ＋ボタン -->
+    <div class="card">
+      <div style="font-size:18px;font-weight:900;margin-bottom:12px;color:#333">ペットのようす</div>
+      <div class="gauge-row">
+        <span class="g-icon">🍚</span>
+        <span class="g-label">おなか</span>
+        <div class="g-track"><div class="g-fill" id="gf-hunger" style="width:50%"></div></div>
+        <span class="g-num" id="gn-hunger">50</span>
+        <button class="care-btn" id="cb-feed" style="background:#ff7043" onclick="doCare('feed')">
+          <span class="ci" id="ci-feed">🦴</span><span>ごはん</span>
+        </button>
+      </div>
+      <div class="gauge-row">
+        <span class="g-icon">✨</span>
+        <span class="g-label">きれい</span>
+        <div class="g-track"><div class="g-fill" id="gf-clean" style="width:50%"></div></div>
+        <span class="g-num" id="gn-clean">50</span>
+        <button class="care-btn" id="cb-bathe" style="background:#42a5f5" onclick="doCare('bathe')">
+          <span class="ci">🛁</span><span>おふろ</span>
+        </button>
+      </div>
+      <div class="gauge-row">
+        <span class="g-icon">⚡</span>
+        <span class="g-label">げんき</span>
+        <div class="g-track"><div class="g-fill" id="gf-energy" style="width:50%"></div></div>
+        <span class="g-num" id="gn-energy">50</span>
+        <button class="care-btn" id="cb-play" style="background:#66bb6a" onclick="doCare('play')">
+          <span class="ci" id="ci-play">⚽</span><span>あそぶ</span>
+        </button>
+      </div>
+    </div>
+    <!-- 全満タン -->
+    <div class="all-full hidden" id="all-full-banner">
+      <h2>⭐️ ぜんぶ まんたん！</h2>
+      <p>すごいね！おいわいしよう！</p>
+      <button class="celebrate-btn" onclick="launchConfetti()">🎉 おいわいアニメーション！</button>
+    </div>
+    <!-- アクセサリー -->
+    <div class="card acc-panel hidden" id="acc-panel">
+      <div class="acc-title">🎁 アクセサリー</div>
+      <div class="acc-subtitle">5にちれんぞくまんたん達成！おめでとう！</div>
+      <div class="acc-row">
+        <button class="acc-btn" id="ac-none"     onclick="equipAcc('none')">   <span class="acc-emoji">✕</span><span>なし</span></button>
+        <button class="acc-btn" id="ac-ribbon"   onclick="equipAcc('ribbon')"> <span class="acc-emoji">🎀</span><span>リボン</span></button>
+        <button class="acc-btn" id="ac-flower"   onclick="equipAcc('flower')"> <span class="acc-emoji">🌸</span><span>おはな</span></button>
+        <button class="acc-btn" id="ac-necklace" onclick="equipAcc('necklace')"><span class="acc-emoji">📿</span><span>くびわ</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== QUIZ ========== -->
+<div id="screen-quiz" class="screen">
+  <div class="quiz-header">
+    <h1>📝 もんだい</h1>
+    <span class="quiz-ticket">🎫 <span id="q-ticket">0</span>まい</span>
+  </div>
+  <div class="scroll">
+    <!-- 問題フェーズ -->
+    <div class="q-phase" id="q-phase">
+      <div class="q-card">
+        <span class="q-cat" id="q-cat">たしざん</span>
+        <div class="q-text" id="q-text"></div>
+      </div>
+      <div class="opts">
+        <button class="opt-btn" id="op0" onclick="answer(0)"></button>
+        <button class="opt-btn" id="op1" onclick="answer(1)"></button>
+        <button class="opt-btn" id="op2" onclick="answer(2)"></button>
+        <button class="opt-btn" id="op3" onclick="answer(3)"></button>
+      </div>
+    </div>
+    <!-- 結果フェーズ -->
+    <div class="r-phase" id="r-phase">
+      <div class="r-card">
+        <div class="r-verdict" id="r-verdict"></div>
+        <span class="r-pet" id="r-pet"></span>
+        <div class="r-msg" id="r-msg"></div>
+      </div>
+      <div class="r-ticket hidden" id="r-ticket">
+        <span class="rt-i">🎫</span>
+        <div>
+          <div class="rt-t">チケット ＋1まい！</div>
+          <div class="rt-s" id="rt-sub"></div>
+        </div>
+      </div>
+      <div class="r-answer">
+        <div class="ra-title">こたえ</div>
+        <div class="ra-correct"><span>✅</span><span id="ra-correct"></span></div>
+        <div class="ra-wrong hidden" id="ra-wrong"><span>❌</span><span id="ra-wrong-text"></span></div>
+      </div>
+      <div class="r-btn-wrap">
+        <button class="btn-next" onclick="nextQ()">➡️ つぎの問題へ</button>
+        <button class="btn-home" onclick="goHome()">🏠 ホームにもどる</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== CALENDAR ========== -->
+<div id="screen-calendar" class="screen">
+  <div class="cal-header"><h1>📅 カレンダー</h1></div>
+  <div class="scroll">
+    <div class="month-nav">
+      <button class="mn-btn" onclick="changeMonth(-1)">◀</button>
+      <span class="month-label" id="month-label"></span>
+      <button class="mn-btn" onclick="changeMonth(1)">▶</button>
+    </div>
+    <div class="cal-card">
+      <div class="wday-row">
+        <div class="wday sun">日</div><div class="wday">月</div><div class="wday">火</div>
+        <div class="wday">水</div><div class="wday">木</div><div class="wday">金</div><div class="wday sat">土</div>
+      </div>
+      <div class="divider"></div>
+      <div class="days-grid" id="days-grid"></div>
+    </div>
+    <div class="study-badge card">
+      <span class="sb-star">⭐️</span>
+      <div>
+        <div class="sb-text" id="study-text">今月は 0日 べんきょうしたよ！</div>
+        <div class="sb-sub"  id="study-sub">きょうからはじめよう！</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== TAB BAR ========== -->
+<div id="tabbar" class="hidden">
+  <button class="tab-btn" data-tab="home"     onclick="switchTab('home')">    <span class="ti">🏠</span>ホーム</button>
+  <button class="tab-btn" data-tab="quiz"     onclick="switchTab('quiz')">    <span class="ti">📝</span>もんだい</button>
+  <button class="tab-btn" data-tab="calendar" onclick="switchTab('calendar')"><span class="ti">📅</span>カレンダー</button>
+</div>
+
+<!-- confetti -->
+<div id="confetti"></div>
+
+<!-- reward modal -->
+<div class="overlay hidden" id="reward-modal" onclick="closeModal('reward-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-emoji">🎉🌟🎊</div>
+    <h2>やったー！</h2>
+    <p>3つのステータスが<br>ぜんぶ まんたんだよ！<br>すごすぎる！</p>
+    <button class="modal-close" onclick="closeModal('reward-modal')">やったー！</button>
+  </div>
+</div>
+
+<!-- settings sheet -->
+<div class="sheet-overlay hidden" id="settings-sheet" onclick="closeModal('settings-sheet')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <h3>せってい</h3>
+    <button class="sheet-btn danger" onclick="resetPet()">🐾 ペットをかえる</button>
+    <button class="sheet-btn cancel" onclick="closeModal('settings-sheet')">キャンセル</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const PET = {
+  dog:    {emoji:'🐶', name:'ぽち',  color:'#ff7043', feedIcon:'🦴', playIcon:'⚽'},
+  cat:    {emoji:'🐱', name:'たま',  color:'#9c27b0', feedIcon:'🐟', playIcon:'🪄'},
+  rabbit: {emoji:'🐰', name:'ぴょん',color:'#e91e8c', feedIcon:'🥕', playIcon:'🏅'},
+};
+const ACC = {
+  none:    {emoji:'',   above:false},
+  ribbon:  {emoji:'🎀', above:true},
+  flower:  {emoji:'🌸', above:true},
+  necklace:{emoji:'📿', above:false},
+};
+
+let S = {
+  petType:'dog', hasPet:false,
+  hunger:50, cleanliness:50, energy:50, tickets:0,
+  accessory:'none', accUnlocked:false, streak:0, lastFullDate:'',
+  studyDays:[],
+};
+
+function saveS(){ localStorage.setItem('mp2_state', JSON.stringify(S)); }
+function loadS(){
+  try{ const d=localStorage.getItem('mp2_state'); if(d) Object.assign(S, JSON.parse(d)); }catch(e){}
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.onload = function(){
+  loadS();
+  S.hunger      = Math.max(0, S.hunger      - 5);
+  S.cleanliness = Math.max(0, S.cleanliness - 5);
+  S.energy      = Math.max(0, S.energy      - 5);
+  saveS();
+  if(!S.hasPet){ showScreen('screen-select'); document.getElementById('tabbar').classList.add('hidden'); }
+  else { switchTab('home'); }
+};
+
+// ============================================================
+// SCREEN / TAB
+// ============================================================
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function switchTab(tab){
+  showScreen('screen-' + tab);
+  document.getElementById('tabbar').classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  if(tab==='home')     renderHome();
+  if(tab==='quiz')     startQuiz();
+  if(tab==='calendar') renderCalendar();
+}
+
+function goHome(){ switchTab('home'); }
+
+// ============================================================
+// PET SELECTION
+// ============================================================
+let pickedType = null;
+
+function pickPet(t){
+  if(t==='rnd'){ t = ['dog','cat','rabbit'][Math.floor(Math.random()*3)]; }
+  pickedType = t;
+  document.querySelectorAll('.pet-card').forEach(c=>c.classList.remove('sel'));
+  const card = document.querySelector(`.pet-card[data-t="${t}"]`) || document.querySelector(`.pet-card[data-t="rnd"]`);
+  document.querySelector(`.pet-card[data-t="${t}"]`)?.classList.add('sel');
+  const p = PET[t];
+  const prev = document.getElementById('sel-preview');
+  prev.innerHTML = `<span class="preview-emoji" style="color:${p.color}">${p.emoji}</span><span style="font-size:20px;font-weight:900;color:${p.color}">${p.name}</span>`;
+  const btn = document.getElementById('confirm-btn');
+  btn.classList.remove('hidden');
+  btn.style.background = `linear-gradient(135deg,${p.color},${p.color}cc)`;
+  document.getElementById('confirm-emoji').textContent = p.emoji;
+}
+
+function confirmPet(){
+  if(!pickedType) return;
+  S.petType = pickedType; S.hasPet = true;
+  saveS();
+  switchTab('home');
+}
+
+// ============================================================
+// HOME RENDER
+// ============================================================
+function renderHome(){
+  const p = PET[S.petType];
+  const avg = Math.round((S.hunger + S.cleanliness + S.energy)/3);
+
+  // ticket
+  document.getElementById('h-ticket').textContent = S.tickets + 'まい';
+  const hint = document.getElementById('h-hint');
+  hint.textContent = S.tickets>0 ? 'おせわができるよ！' : 'もんだいをとこう！';
+  hint.className = S.tickets>0 ? 'thint ok' : 'thint';
+
+  // pet
+  document.getElementById('pet-emoji').textContent = p.emoji;
+  document.getElementById('pet-name').textContent  = p.name;
+  document.getElementById('pet-face').textContent  = faceEmoji(avg);
+  const mood = moodInfo(avg);
+  const mEl = document.getElementById('pet-mood');
+  mEl.textContent = mood.text;
+  mEl.style.cssText = `background:${mood.bg};color:${mood.color};display:inline-block;font-size:15px;font-weight:700;padding:4px 14px;border-radius:12px;margin-top:4px`;
+
+  // accessory
+  renderAccessoryOnPet();
+
+  // gauges
+  setGauge('hunger',    S.hunger);
+  setGauge('clean',     S.cleanliness);
+  setGauge('energy',    S.energy);
+
+  // care buttons
+  const disabled = S.tickets <= 0;
+  ['feed','bathe','play'].forEach(a=>{
+    const b = document.getElementById('cb-'+a);
+    b.classList.toggle('grey', disabled);
+    b.disabled = disabled;
+  });
+  document.getElementById('ci-feed').textContent = p.feedIcon;
+  document.getElementById('ci-play').textContent = p.playIcon;
+
+  // banners
+  const allFull = S.hunger===100 && S.cleanliness===100 && S.energy===100;
+  document.getElementById('all-full-banner').classList.toggle('hidden', !allFull);
+  document.getElementById('acc-panel').classList.toggle('hidden', !S.accUnlocked);
+  if(S.accUnlocked){
+    ['none','ribbon','flower','necklace'].forEach(a=>{
+      document.getElementById('ac-'+a).classList.toggle('sel', S.accessory===a);
+    });
+  }
+}
+
+function setGauge(key, val){
+  const fill = document.getElementById('gf-'+key);
+  const num  = document.getElementById('gn-'+key);
+  fill.style.width = val+'%';
+  fill.style.background = val>=60 ? '#66bb6a' : val>=30 ? '#ffa726' : '#ef5350';
+  num.textContent = val;
+}
+
+function faceEmoji(avg){
+  if(avg>=80) return '😄';
+  if(avg>=60) return '🙂';
+  if(avg>=40) return '😐';
+  if(avg>=20) return '😟';
+  return '😢';
+}
+
+function moodInfo(avg){
+  if(avg>=80) return {text:'とてもげんき！',  bg:'#e8f5e9', color:'#2e7d32'};
+  if(avg>=60) return {text:'げんきだよ',      bg:'#e8f5e9', color:'#388e3c'};
+  if(avg>=40) return {text:'ふつうかな',       bg:'#fff3e0', color:'#e65100'};
+  if(avg>=20) return {text:'つかれてる…',     bg:'#ffebee', color:'#c62828'};
+  return       {text:'たすけて〜！',           bg:'#ffebee', color:'#b71c1c'};
+}
+
+function renderAccessoryOnPet(){
+  const info = ACC[S.accessory] || ACC.none;
+  const top = document.getElementById('acc-top');
+  const bot = document.getElementById('acc-bot');
+  top.classList.add('hidden'); bot.classList.add('hidden');
+  if(S.accessory!=='none' && info.emoji){
+    if(info.above){ top.textContent=info.emoji; top.classList.remove('hidden'); }
+    else           { bot.textContent=info.emoji; bot.classList.remove('hidden'); }
+  }
+}
+
+// ============================================================
+// CARE
+// ============================================================
+function doCare(action){
+  if(S.tickets<=0) return;
+  S.tickets--;
+  if(action==='feed')  S.hunger      = Math.min(100, S.hunger+20);
+  if(action==='bathe') S.cleanliness = Math.min(100, S.cleanliness+20);
+  if(action==='play')  S.energy      = Math.min(100, S.energy+20);
+  checkFullStreak();
+  saveS();
+  showReaction(action);
+  renderHome();
+  const allFull = S.hunger===100 && S.cleanliness===100 && S.energy===100;
+  if(allFull) setTimeout(()=>{ openModal('reward-modal'); launchConfetti(); }, 300);
+}
+
+function showReaction(action){
+  const p = PET[S.petType];
+  const emoji = action==='feed' ? p.feedIcon : action==='bathe' ? '🛁' : p.playIcon;
+  const color = action==='feed' ? '#ff7043'  : action==='bathe' ? '#42a5f5' : '#66bb6a';
+  const petBox = document.querySelector('#screen-home .card:nth-child(2)');
+  document.querySelectorAll('.react-badge').forEach(e=>e.remove());
+  const badge = document.createElement('div');
+  badge.className = 'react-badge';
+  badge.innerHTML = `<span class="rb-emoji">${emoji}</span><span class="rb-plus" style="color:${color}">＋20</span>`;
+  petBox.appendChild(badge);
+  setTimeout(()=>badge.remove(), 2100);
+}
+
+function checkFullStreak(){
+  const allFull = S.hunger===100 && S.cleanliness===100 && S.energy===100;
+  if(!allFull) return;
+  const today = todayKey();
+  if(S.lastFullDate===today) return;
+  let wasYesterday = false;
+  if(S.lastFullDate){
+    const diff = Math.round((new Date(today) - new Date(S.lastFullDate))/86400000);
+    wasYesterday = diff===1;
+  }
+  S.streak = wasYesterday ? S.streak+1 : 1;
+  S.lastFullDate = today;
+  if(S.streak>=5) S.accUnlocked = true;
+}
+
+function equipAcc(a){ S.accessory=a; saveS(); renderHome(); }
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function openSettings(){ openModal('settings-sheet'); }
+function resetPet(){
+  closeModal('settings-sheet');
+  S.hunger=50; S.cleanliness=50; S.energy=50;
+  S.accessory='none'; S.accUnlocked=false; S.streak=0; S.lastFullDate='';
+  S.hasPet=false; saveS();
+  pickedType=null;
+  document.querySelectorAll('.pet-card').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('sel-preview').innerHTML = `<span style="font-size:52px;opacity:.3">❓</span><span style="font-size:17px;color:#aaa">ペットをえらんでね</span>`;
+  document.getElementById('confirm-btn').classList.add('hidden');
+  document.getElementById('tabbar').classList.add('hidden');
+  showScreen('screen-select');
+}
+
+function openModal(id){ document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+
+// ============================================================
+// CONFETTI
+// ============================================================
+function launchConfetti(){
+  const ct = document.getElementById('confetti');
+  ct.innerHTML='';
+  const colors=['#ff5252','#ff9800','#ffeb3b','#66bb6a','#42a5f5','#ab47bc','#ff4081'];
+  for(let i=0;i<45;i++){
+    const el=document.createElement('div');
+    el.className='cf';
+    el.style.left=Math.random()*100+'%';
+    el.style.background=colors[Math.floor(Math.random()*colors.length)];
+    el.style.animationDuration=(1.5+Math.random()*1.5)+'s';
+    el.style.animationDelay=(Math.random()*1)+'s';
+    el.style.borderRadius=Math.random()>.5?'50%':'2px';
+    ct.appendChild(el);
+  }
+  setTimeout(()=>ct.innerHTML='', 3500);
+}
+
+// ============================================================
+// QUIZ ENGINE
+// ============================================================
+let curQ=null, answered=false, recentQ=[], recentSet=new Set(), multiQ=[];
+const GENS=[makeAdd,makeSub,makeMul,makeClock,makeVol,makeLen,makeWordProb];
+
+function startQuiz(){
+  document.getElementById('q-ticket').textContent=S.tickets;
+  loadQ();
+}
+
+function loadQ(){
+  answered=false;
+  curQ=randomQ();
+  document.getElementById('q-cat').textContent=curQ.cat;
+  document.getElementById('q-text').textContent=curQ.text;
+  for(let i=0;i<4;i++){
+    const b=document.getElementById('op'+i);
+    b.textContent=curQ.opts[i]; b.className='opt-btn'; b.disabled=false;
+  }
+  document.getElementById('q-phase').classList.add('active');
+  document.getElementById('r-phase').classList.remove('active');
+}
+
+function answer(idx){
+  if(answered) return;
+  answered=true;
+  const ok = idx===curQ.correct;
+  for(let i=0;i<4;i++){
+    const b=document.getElementById('op'+i);
+    b.disabled=true;
+    if(i===curQ.correct) b.classList.add('correct');
+    else if(i===idx&&!ok) b.classList.add('wrong');
+  }
+  if(ok){ S.tickets++; recordStudy(); saveS(); }
+  setTimeout(()=>showResult(ok,idx), 600);
+}
+
+function showResult(ok,sel){
+  const p=PET[S.petType];
+  document.getElementById('r-verdict').textContent = ok ? 'せいかい！🎉' : 'ざんねん😢';
+  document.getElementById('r-verdict').className   = 'r-verdict '+(ok?'ok':'ng');
+  const pe=document.getElementById('r-pet');
+  pe.textContent=p.emoji; pe.className='r-pet'+(ok?' jump':'');
+  document.getElementById('r-msg').textContent = ok ? 'やったー！\nすごいね！' : 'つぎはがんばろう！';
+  document.getElementById('r-msg').className   = 'r-msg '+(ok?'ok':'ng');
+  const tb=document.getElementById('r-ticket');
+  tb.classList.toggle('hidden',!ok);
+  if(ok) document.getElementById('rt-sub').textContent='もちチケット：'+S.tickets+'まい';
+  document.getElementById('q-ticket').textContent=S.tickets;
+  document.getElementById('ra-correct').textContent=curQ.opts[curQ.correct];
+  const rw=document.getElementById('ra-wrong');
+  if(!ok&&sel!==-1){
+    rw.classList.remove('hidden');
+    document.getElementById('ra-wrong-text').textContent='あなたのこたえ：'+curQ.opts[sel];
+  } else rw.classList.add('hidden');
+  document.getElementById('q-phase').classList.remove('active');
+  document.getElementById('r-phase').classList.add('active');
+  if(ok) launchConfetti();
+}
+
+function nextQ(){ loadQ(); }
+
+// ── question randomizer ──
+function randomQ(){
+  for(let i=0;i<30;i++){
+    const q=GENS[Math.floor(Math.random()*GENS.length)]();
+    if(!recentSet.has(q.text)){ markUsed(q.text); return q; }
+  }
+  const q=GENS[0](); markUsed(q.text); return q;
+}
+function markUsed(t){ recentSet.add(t); recentQ.push(t); if(recentQ.length>12) recentSet.delete(recentQ.shift()); }
+
+function rnd(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function sh(a){ const r=[...a]; for(let i=r.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]]; } return r; }
+
+function makeOpts(ans,lo,hi,step=1){
+  const deltas=step>1?[step,-step,step*2,-step*2]:sh([1,-1,10,-10,9,-9,11,-11,2,-2]);
+  let o=[ans];
+  for(const d of deltas){ const c=ans+d; if(c!==ans&&c>=lo&&c<=hi&&!o.includes(c)) o.push(c); if(o.length===4) break; }
+  let off=step||1;
+  while(o.length<4&&off<=300){ const c1=ans+off,c2=ans-off; if(c1<=hi&&!o.includes(c1))o.push(c1); if(o.length<4&&c2>=lo&&!o.includes(c2))o.push(c2); off+=step||1; }
+  const s=sh(o); return {opts:s.map(String),correct:s.indexOf(ans)};
+}
+
+// ── Addition ──
+function makeAdd(){
+  const variants=[
+    ()=>{
+      const aO=rnd(2,9),bO=rnd(Math.max(1,10-aO),9),oSum=aO+bO;
+      const maxT=Math.floor((100-oSum)/10),tSum=rnd(2,Math.max(2,maxT));
+      const aT=rnd(1,tSum-1),bT=tSum-aT,a=aT*10+aO,b=bT*10+bO;
+      const {opts,correct}=makeOpts(a+b,11,100);
+      return {text:`${a} ＋ ${b} ＝ ?`,opts,correct,cat:'たしざん'};
+    },
+    ()=>{ const a=rnd(10,50),b=rnd(10,50); const {opts,correct}=makeOpts(a+b,20,100); return {text:`${a} ＋ ${b} ＝ ?`,opts,correct,cat:'たしざん'}; },
+    ()=>{ const a=rnd(1,9),b=rnd(1,9); const {opts,correct}=makeOpts(a+b,2,18); return {text:`${a} ＋ ${b} ＝ ?`,opts,correct,cat:'たしざん'}; },
+    ()=>{ const a=rnd(11,29),b=rnd(1,9); const {opts,correct}=makeOpts(a+b,12,38); return {text:`${a} ＋ ${b} ＝ ?`,opts,correct,cat:'たしざん'}; },
+    ()=>{ const a=rnd(20,80),b=rnd(10,20); const {opts,correct}=makeOpts(a+b,30,100); return {text:`${a} ＋ ${b} ＝ ?`,opts,correct,cat:'たしざん'}; },
+  ];
+  return variants[rnd(0,variants.length-1)]();
+}
+
+// ── Subtraction ──
+function makeSub(){
+  const variants=[
+    ()=>{ const bO=rnd(2,9),aO=rnd(0,bO-1),bT=rnd(1,7),aT=rnd(bT+1,9),a=aT*10+aO,b=bT*10+bO; const {opts,correct}=makeOpts(a-b,1,89); return {text:`${a} ー ${b} ＝ ?`,opts,correct,cat:'ひきざん'}; },
+    ()=>{ const a=rnd(10,20),b=rnd(1,a-1); const {opts,correct}=makeOpts(a-b,1,19); return {text:`${a} ー ${b} ＝ ?`,opts,correct,cat:'ひきざん'}; },
+    ()=>{ const a=rnd(20,50),b=rnd(10,a-1); const {opts,correct}=makeOpts(a-b,1,40); return {text:`${a} ー ${b} ＝ ?`,opts,correct,cat:'ひきざん'}; },
+    ()=>{ const a=rnd(30,90),b=rnd(1,20); const {opts,correct}=makeOpts(a-b,10,89); return {text:`${a} ー ${b} ＝ ?`,opts,correct,cat:'ひきざん'}; },
+    ()=>{ const a=rnd(50,100),b=rnd(20,a-1); const {opts,correct}=makeOpts(a-b,1,80); return {text:`${a} ー ${b} ＝ ?`,opts,correct,cat:'ひきざん'}; },
+  ];
+  return variants[rnd(0,variants.length-1)]();
+}
+
+// ── Multiplication ──
+function makeMul(){
+  if(multiQ.length===0) multiQ=sh([2,2,3,3,4,4,5,5]);
+  const m=multiQ.shift(), n=rnd(1,9), ans=m*n;
+  const ws=sh([...new Set([m*Math.max(1,n-1),m*Math.min(9,n+1),Math.max(2,m-1)*n,Math.min(5,m+1)*n,ans+1,ans-1])].filter(w=>w!==ans&&w>0));
+  let o=[ans]; for(const w of ws){ if(!o.includes(w))o.push(w); if(o.length===4)break; }
+  let off=1; while(o.length<4&&off<=50){ const c=ans+off; if(!o.includes(c)&&c>0)o.push(c); off++; }
+  const s=sh(o);
+  return {text:`${m} × ${n} ＝ ?`,opts:s.map(String),correct:s.indexOf(ans),cat:'かけざん'};
+}
+
+// ── Clock ──
+function makeClock(){
+  const variants=[
+    ()=>{
+      const h=rnd(1,12),isHalf=Math.random()<.5;
+      const nh=h%12+1,ph=h===1?12:h-1;
+      const q=isHalf?`ながいはりが 6を、\nみじかいはりが ${h}と ${nh}の あいだを さしています。\nなんじ？`:`ながいはりが 12を、\nみじかいはりが ${h}を さしています。\nなんじ？`;
+      const ans=isHalf?`${h}じ はん`:`${h}じ ちょうど`;
+      const ws=isHalf?[`${ph}じ はん`,`${nh}じ はん`,`${h}じ ちょうど`]:[`${ph}じ ちょうど`,`${nh}じ ちょうど`,`${h}じ はん`];
+      const s=sh([ans,...ws]);
+      return {text:q,opts:s,correct:s.indexOf(ans),cat:'とけい'};
+    },
+    ()=>{
+      const h=rnd(1,12),m=rnd(1,11)*5,ans=`${h}じ ${m}ふん`;
+      const nh=h%12+1,ws=[`${h}じ ${m+5}ふん`,`${nh}じ ${m}ふん`,`${h}じ ${Math.max(5,m-5)}ふん`];
+      const s=sh([ans,...ws]);
+      return {text:`ながいはりが ${m/5}を、\nみじかいはりが ${h}を さしています。\nなんじ？`,opts:s,correct:s.indexOf(ans),cat:'とけい'};
+    },
+    ()=>{
+      const h1=rnd(1,10),m1=rnd(1,3)*15,m2=rnd(1,2)*15,h2=h1,mSum=m1+m2,actualM=mSum%60,carryH=Math.floor(mSum/60);
+      const ah=h2+carryH,ans=actualM===0?`${ah}じ ちょうど`:`${ah}じ ${actualM}ふん`;
+      const ws=[`${ah}じ ${actualM+15}ふん`,`${h1}じ ${m1}ふん`,actualM===0?`${ah}じ 15ふん`:`${ah}じ ちょうど`];
+      const s=sh([ans,...ws]);
+      return {text:`${h1}じ ${m1}ふんから\n${m2}ふんたつと なんじ？`,opts:s,correct:s.indexOf(ans),cat:'とけい'};
+    },
+  ];
+  return variants[rnd(0,variants.length-1)]();
+}
+
+// ── Volume ──
+function makeVol(){
+  const variants=[
+    ()=>{ const L=rnd(1,5),ans=L*10; const {opts,correct}=makeOpts(ans,1,60); return {text:`${L}Lは 何dLですか？`,opts,correct,cat:'かさ'}; },
+    ()=>{ const a=rnd(2,7),b=rnd(1,10-a),ans=a+b; const {opts,correct}=makeOpts(ans,1,18); return {text:`${a}dLと ${b}dLを あわせると\n何dLですか？`,opts,correct,cat:'かさ'}; },
+    ()=>{ const L=rnd(1,2),d=rnd(1,9),ans=L*10+d; const {opts,correct}=makeOpts(ans,5,30); return {text:`${L}L${d}dLは 何dLですか？`,opts,correct,cat:'かさ'}; },
+    ()=>{ const t=rnd(5,10),u=rnd(1,t-1),ans=t-u; const {opts,correct}=makeOpts(ans,1,t-1); return {text:`やかんに ${t}dLのお茶があります。\n${u}dL のみました。\nのこりは 何dLですか？`,opts,correct,cat:'かさ'}; },
+    ()=>{ const a=rnd(2,6),b=rnd(1,5),ans=a+b; const {opts,correct}=makeOpts(ans,1,15); return {text:`コップに ${a}dLのジュースがあります。\n${b}dL 足すと 何dLですか？`,opts,correct,cat:'かさ'}; },
+    ()=>{ const L=rnd(2,5),ans=L*10; const {opts,correct}=makeOpts(ans,10,60,10); return {text:`${L}Lは 何dLですか？`,opts,correct,cat:'かさ'}; },
+    ()=>{ const cDL=rnd(11,16),w1=rnd(6,9),w2=rnd(2,5); const s=sh([cDL,w1,w2,10]); const opts=s.map(x=>`${x}dL`); return {text:`1Lより おおい かさは どれですか？`,opts,correct:opts.indexOf(`${cDL}dL`),cat:'かさ'}; },
+    ()=>{ const a=rnd(1,3),b=rnd(1,3),ans=a+b,rem=rnd(1,ans-1)||1; const {opts,correct}=makeOpts(rem,1,ans); return {text:`バケツに ${ans}Lの水があります。\n${ans-rem}L つかいました。\nのこりは 何Lですか？`,opts,correct,cat:'かさ'}; },
+    ()=>{ const a=rnd(3,8),b=rnd(3,8),ans=a+b; const {opts,correct}=makeOpts(ans,6,18); return {text:`大きいコップは ${a}dL、\n小さいコップは ${b}dL 入ります。\nあわせて 何dLですか？`,opts,correct,cat:'かさ'}; },
+    ()=>{ const t=rnd(3,8),u=rnd(1,t-1),ans=t-u; const {opts,correct}=makeOpts(ans,1,t-1); return {text:`${t}dLのジュースを ${u}dL のみました。\nのこりは 何dLですか？`,opts,correct,cat:'かさ'}; },
+  ];
+  return variants[rnd(0,variants.length-1)]();
+}
+
+// ── Length ──
+function makeLen(){
+  const variants=[
+    ()=>{ const m=rnd(1,5),ans=m*100; const {opts,correct}=makeOpts(ans,50,600,10); return {text:`${m}mは 何cmですか？`,opts,correct,cat:'ながさ'}; },
+    ()=>{ const a=rnd(10,20),b=rnd(3,9),ans=a+b; const {opts,correct}=makeOpts(ans,10,40); return {text:`えんぴつは ${a}cm、\n消しゴムは ${b}cmです。\nあわせて 何cmですか？`,opts,correct,cat:'ながさ'}; },
+    ()=>{ const t=rnd(20,50),c=rnd(5,t-5),ans=t-c; const {opts,correct}=makeOpts(ans,1,t-1); return {text:`${t}cmのテープから\n${c}cm 切りとりました。\nのこりは 何cmですか？`,opts,correct,cat:'ながさ'}; },
+    ()=>{ const m=rnd(1,5),cm=m*100; const {opts,correct}=makeOpts(m,1,8); return {text:`${cm}cmは 何mですか？`,opts,correct,cat:'ながさ'}; },
+    ()=>{ const m=rnd(1,3),t=rnd(1,9)*10,ans=m*100+t; const {opts,correct}=makeOpts(ans,50,500,10); return {text:`${m}m${t}cmは 何cmですか？`,opts,correct,cat:'ながさ'}; },
+    ()=>{ const a=rnd(15,55),d=rnd(5,20),b=a+d; const s=sh([b,a,b-1,b+d]); return {text:`${a}cmのテープと\n${b}cmのテープ、\nどちらが ながいですか？`,opts:s.map(String),correct:s.indexOf(b),cat:'ながさ'}; },
+    ()=>{ const m=rnd(2,5),ans=m*100-rnd(1,50)*1; const a2=rnd(1,4),ans2=a2*100+rnd(10,90); const {opts,correct}=makeOpts(ans,50,500,10); return {text:`${m}mは 何cmですか？`,opts,correct,cat:'ながさ'}; },
+    ()=>{ const a=rnd(5,30),b=rnd(5,30),ans=a+b; const {opts,correct}=makeOpts(ans,10,60); return {text:`${a}cmと ${b}cmの リボンを つなぎました。\nあわせて 何cmですか？`,opts,correct,cat:'ながさ'}; },
+    ()=>{ const a=rnd(50,200),b=rnd(10,a-10),ans=a-b; const {opts,correct}=makeOpts(ans,1,a-1); return {text:`${a}cmの ひもから\n${b}cm 切りました。\nのこりは 何cmですか？`,opts,correct,cat:'ながさ'}; },
+    ()=>{ const m=rnd(1,3),cm2=rnd(10,90),total=m*100+cm2; const {opts,correct}=makeOpts(total,100,400,10); return {text:`${m}m${cm2}cmは 何cmですか？`,opts,correct,cat:'ながさ'}; },
+  ];
+  return variants[rnd(0,variants.length-1)]();
+}
+
+// ── Word Problem ──
+function makeWordProb(){
+  const variants=[
+    ()=>{ const a=rnd(4,15),b=rnd(2,8),ans=a+b; const {opts,correct}=makeOpts(ans,5,30); return {text:`りんごが ${a}こ あります。\n${b}こ もらいました。\nぜんぶで 何こですか？`,opts,correct,cat:'もんだい'}; },
+    ()=>{ const a=rnd(8,20),b=rnd(3,10),ans=a+b; const {opts,correct}=makeOpts(ans,8,40); return {text:`子どもが ${a}人 います。\n${b}人 きました。\nぜんぶで 何人ですか？`,opts,correct,cat:'もんだい'}; },
+    ()=>{ const a=rnd(15,40),b=rnd(10,30),ans=a+b; const {opts,correct}=makeOpts(ans,20,80); return {text:`赤い 花が ${a}本、\n白い 花が ${b}本 あります。\nあわせて 何本ですか？`,opts,correct,cat:'もんだい'}; },
+    ()=>{ const a=rnd(10,25),b=rnd(3,9),ans=a-b; const {opts,correct}=makeOpts(ans,1,a-1); return {text:`シールが ${a}まい あります。\n${b}まい あげました。\nのこりは 何まいですか？`,opts,correct,cat:'もんだい'}; },
+    ()=>{ const a=rnd(12,30),b=rnd(4,10),ans=a-b; const {opts,correct}=makeOpts(ans,1,a-1); return {text:`金魚が ${a}ひき います。\n${b}ひき 川に もどしました。\nのこりは 何びきですか？`,opts,correct,cat:'もんだい'}; },
+    ()=>{ const a=rnd(20,50),b=rnd(8,15),ans=a-b; const {opts,correct}=makeOpts(ans,5,a-1); return {text:`おり紙が ${a}まい あります。\n${b}まい つかいました。\nのこりは 何まいですか？`,opts,correct,cat:'もんだい'}; },
+    ()=>{ const m=rnd(2,5),n=rnd(2,6),ans=m*n; let o=[ans,...sh([m*(n+1),m*Math.max(1,n-1),(m+1)*n]).filter(w=>w!==ans&&w>0)]; while(o.length<4)o.push(ans+o.length); const s=sh(o.slice(0,4)); return {text:`1つの 花びんに 花が ${n}本 さしてあります。\n${m}つの 花びんでは 何本ですか？`,opts:s.map(String),correct:s.indexOf(ans),cat:'もんだい'}; },
+    ()=>{ const m=rnd(2,5),n=rnd(2,7),ans=m*n; let o=[ans,...sh([ans+1,ans-1,m*(n+1)]).filter(w=>w!==ans&&w>0)]; while(o.length<4)o.push(ans+o.length); const s=sh(o.slice(0,4)); return {text:`${m}人に ${n}こずつ\nあめを くばります。\nぜんぶで 何こですか？`,opts:s.map(String),correct:s.indexOf(ans),cat:'もんだい'}; },
+    ()=>{ const m=rnd(2,5),n=rnd(3,8),ans=m*n; let o=[ans,...sh([m*(n+1),m*(n-1),(m+1)*n]).filter(w=>w!==ans&&w>0)]; while(o.length<4)o.push(ans+o.length); const s=sh(o.slice(0,4)); return {text:`${n}こ 入りの ふくろが\n${m}ふくろ あります。\nぜんぶで 何こですか？`,opts:s.map(String),correct:s.indexOf(ans),cat:'もんだい'}; },
+    ()=>{ const p=rnd(10,50),buy=rnd(5,p-5),ans=p-buy; const {opts,correct}=makeOpts(ans,1,p-1); return {text:`${p}円 もっています。\n${buy}円の けしゴムを 買いました。\nのこりは 何円ですか？`,opts,correct,cat:'もんだい'}; },
+    ()=>{ const a=rnd(5,15),b=rnd(2,a-1),ans=a-b; const {opts,correct}=makeOpts(ans,1,a-1); return {text:`本が ${a}さつ あります。\n${b}さつ かりました。\nのこりは 何さつですか？`,opts,correct,cat:'もんだい'}; },
+    ()=>{ const a=rnd(5,20),b=rnd(1,5),ans=a+b; const {opts,correct}=makeOpts(ans,5,30); return {text:`バスに ${a}人 のっています。\n${b}人 のりました。\nぜんぶで 何人ですか？`,opts,correct,cat:'もんだい'}; },
+    ()=>{ const p=rnd(50,100),buy=rnd(10,p),ans=p-buy; const {opts,correct}=makeOpts(ans,0,p-1); return {text:`${p}円 もっています。\n${buy}円の アイスを 買いました。\nのこりは 何円ですか？`,opts,correct,cat:'もんだい'}; },
+    ()=>{ const m=rnd(2,5),n=rnd(2,6),ans=m*n; let o=[ans,...sh([m*(n+1),(m+1)*n,ans-1]).filter(w=>w!==ans&&w>0)]; while(o.length<4)o.push(ans+o.length); const s=sh(o.slice(0,4)); return {text:`1つのふくろに ${n}こ入っています。\n${m}ふくろでは 何こですか？`,opts:s.map(String),correct:s.indexOf(ans),cat:'もんだい'}; },
+  ];
+  return variants[rnd(0,variants.length-1)]();
+}
+
+// ============================================================
+// STUDY / DATE
+// ============================================================
+function todayKey(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function recordStudy(){
+  const k=todayKey(); if(!S.studyDays.includes(k)) S.studyDays.push(k);
+}
+
+// ============================================================
+// CALENDAR
+// ============================================================
+let calY=new Date().getFullYear(), calM=new Date().getMonth()+1;
+
+function renderCalendar(){
+  document.getElementById('month-label').textContent=`${calY}年 ${calM}月`;
+  const first=new Date(calY,calM-1,1);
+  const days=new Date(calY,calM,0).getDate();
+  const sw=first.getDay();
+  const td=new Date(), ty=td.getFullYear(),tm=td.getMonth()+1,tdd=td.getDate();
+  const grid=document.getElementById('days-grid');
+  grid.innerHTML='';
+  for(let i=0;i<sw;i++){ const e=document.createElement('div'); e.className='day-cell'; grid.appendChild(e); }
+  for(let d=1;d<=days;d++){
+    const key=`${calY}-${String(calM).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=calY===ty&&calM===tm&&d===tdd;
+    const hasStudy=S.studyDays.includes(key);
+    const cell=document.createElement('div'); cell.className='day-cell';
+    const num=document.createElement('div'); num.className='day-num'+(isToday?' today':''); num.textContent=d;
+    cell.appendChild(num);
+    if(hasStudy){ const s=document.createElement('div'); s.className='day-star'; s.textContent='⭐️'; cell.appendChild(s); }
+    grid.appendChild(cell);
+  }
+  const prefix=`${calY}-${String(calM).padStart(2,'0')}-`;
+  const cnt=S.studyDays.filter(k=>k.startsWith(prefix)).length;
+  document.getElementById('study-text').textContent=`今月は ${cnt}日 べんきょうしたよ！`;
+  document.getElementById('study-sub').textContent=cnt===0?'きょうからはじめよう！':'すごい！このちょうしでがんばろう！';
+}
+
+function changeMonth(d){
+  calM+=d; if(calM>12){calM=1;calY++;} if(calM<1){calM=12;calY--;} renderCalendar();
+}
+</script>
+</body>
+</html>
