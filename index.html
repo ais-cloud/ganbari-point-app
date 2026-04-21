@@ -73,6 +73,15 @@ body {
 }
 .tl-undo:active { background:#fff0f0; }
 
+/* トースト */
+#toast {
+  position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,0.72); color:#fff; padding:9px 20px;
+  border-radius:20px; font-size:13px; opacity:0; transition:opacity 0.3s;
+  z-index:200; pointer-events:none; white-space:nowrap;
+}
+#toast.show { opacity:1; }
+
 /* データ削除リンク */
 .danger-link {
   display:block; text-align:center; color:#ccc; font-size:12px;
@@ -330,6 +339,15 @@ body {
     <div class="s-row"><span>🥇 金</span><input type="number" id="cfgGold" value="8" min="1" oninput="saveCfg()"></div>
   </div>
 
+  <div class="s-card">
+    <h3>💾 バックアップ・復元</h3>
+    <p style="font-size:12px;color:#888;margin-bottom:12px;">スマホとPC間でデータを移すことができます</p>
+    <div style="display:flex;gap:8px;">
+      <button class="s-btn blue" style="flex:1;padding:12px;" onclick="exportData()">📤 書き出し</button>
+      <button class="s-btn green" style="flex:1;padding:12px;" onclick="importData()">📥 読み込み</button>
+    </div>
+  </div>
+
   <span class="danger-link" onclick="resetStep1()">すべてのデータを削除...</span>
 </div>
 
@@ -445,31 +463,89 @@ body {
   </div>
 </div>
 
+<div id="toast"></div>
+
 <script>
+// ===================== データ =====================
 const DEFAULT_ITEMS = [
-  { id:'a', name:'プリントA', pts:1, visible:true },
-  { id:'b', name:'プリントB', pts:1, visible:true },
-  { id:'c', name:'プリントC', pts:1, visible:true },
-  { id:'d', name:'マンガでわかる！理系脳パズル', pts:1, visible:true },
-  { id:'e', name:'きらめき思考力ワーク', pts:1, visible:true },
-  { id:'f', name:'ポケモンずかんドリル（1年生）', pts:1, visible:true },
-  { id:'g', name:'ポケモンずかんドリル（2年生漢字）', pts:1, visible:true },
-  { id:'h', name:'ポケモンずかんドリル（2年生かけ算）', pts:1, visible:true },
-  { id:'i', name:'しゅくだい', pts:1, visible:true },
-  { id:'j', name:'おんどく', pts:1, visible:true },
+  { id:'a', name:'しゅくだい', pts:10, visible:true },
+  { id:'b', name:'おんどく', pts:10, visible:true },
+  { id:'c', name:'プリントA', pts:5, visible:true },
+  { id:'d', name:'プリントB', pts:6, visible:true },
+  { id:'e', name:'プリントC', pts:7, visible:true },
+  { id:'f', name:'さんすうプリント', pts:7, visible:true },
+  { id:'g', name:'漢字ドリル', pts:10, visible:true },
+  { id:'h', name:'えいごリスニング', pts:15, visible:true },
+  { id:'i', name:'ピアノの練習', pts:20, visible:true },
 ];
 
 function load() {
-  const raw = localStorage.getItem('pa2');
-  if (!raw) return { points:0, history:[], items:DEFAULT_ITEMS.map(i=>({...i})), cfg:{} };
-  return JSON.parse(raw);
+  try {
+    const raw = localStorage.getItem('pa2');
+    if (!raw) return { points:0, history:[], items:DEFAULT_ITEMS.map(i=>({...i})), cfg:{} };
+    return JSON.parse(raw);
+  } catch(e) {
+    return { points:0, history:[], items:DEFAULT_ITEMS.map(i=>({...i})), cfg:{} };
+  }
 }
-function save(d) { localStorage.setItem('pa2', JSON.stringify(d)); }
+function save(d) {
+  localStorage.setItem('pa2', JSON.stringify(d));
+  showToast('✓ 保存しました');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function exportData() {
+  const d = load();
+  const json = JSON.stringify(d, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pointapp_${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const d = JSON.parse(ev.target.result);
+        if (typeof d.points !== 'number' || !Array.isArray(d.history)) {
+          alert('データの形式が正しくありません'); return;
+        }
+        if (!confirm('現在のデータをすべて上書きします。よろしいですか？')) return;
+        localStorage.setItem('pa2', ev.target.result);
+        alert('✓ データを復元しました！');
+        location.reload();
+      } catch(e) {
+        alert('ファイルの読み込みに失敗しました');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
 function C() {
   const d = load();
   return Object.assign({ yt:'YouTube', sw:'Switch', bronze:3, silver:5, gold:8, pin:'' }, d.cfg||{});
 }
 
+// ===================== ユーティリティ =====================
 function todayStr() { return new Date().toISOString().slice(0,10); }
 function fmtDate(iso) { const d=new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; }
 
@@ -481,6 +557,7 @@ function earnedRange(history, from) {
   return history.filter(h => h.amount > 0 && new Date(h.date) >= from).reduce((s,h) => s + h.amount, 0);
 }
 
+// ===================== タブ =====================
 function switchTab(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-nav button').forEach(b => b.classList.remove('active'));
@@ -500,6 +577,7 @@ function trySettings() {
   } else switchTab('settings');
 }
 
+// ===================== ためる画面 =====================
 function renderEarn() {
   const d = load();
   const today = new Date();
@@ -530,7 +608,8 @@ function renderEarn() {
     logEl.style.display = 'none';
   } else {
     logEl.style.display = 'block';
-    const lastEntry = d.history[d.history.length - 1];
+    const lastIdx = d.history.length - 1;
+    const lastEntry = d.history[lastIdx];
     const isLastEarnToday = lastEntry && lastEntry.amount > 0 && lastEntry.date.slice(0,10) === t;
     logList.innerHTML = todayEntries.slice().reverse().map((h, ri) => {
       const dt = new Date(h.date);
@@ -572,6 +651,7 @@ function undoLast() {
 
 function esc(s) { const el = document.createElement('span'); el.textContent = s; return el.innerHTML; }
 
+// ===================== ポイント画面 =====================
 const YT_OPTS = [15, 30];
 const SW_OPTS = [5, 10, 15, 30];
 let pendRw = null;
@@ -636,6 +716,7 @@ function doUse() {
   save(d); cm('mUse'); renderPoints();
 }
 
+// ===================== カレンダー =====================
 const DOW = ['日','月','火','水','木','金','土'];
 let cY, cM;
 (function(){ const n=new Date(); cY=n.getFullYear(); cM=n.getMonth(); })();
@@ -675,6 +756,7 @@ function renderCal() {
   document.getElementById('calMonth').textContent=earnedRange(d.history, ms);
 }
 
+// ===================== 設定 =====================
 function renderSettings() {
   const d=load(), c=C();
   document.getElementById('pinSt').textContent = c.pin ? '設定済み' : '未設定';
@@ -754,6 +836,7 @@ function resetStep1() { om('mReset1'); }
 function resetStep2() { cm('mReset1'); om('mReset2'); }
 function resetFinal() { localStorage.removeItem('pa2'); location.reload(); }
 
+// ===================== PIN =====================
 let pinBuf='', pinCb=null;
 function updDots(id,len) {
   document.querySelectorAll('#'+id+' .pin-dot').forEach((el,i)=>el.classList.toggle('on',i<len));
@@ -801,9 +884,11 @@ function clearPin() {
   const d=load(); if(!d.cfg)d.cfg={}; d.cfg.pin=''; save(d); renderSettings();
 }
 
+// ===================== モーダル共通 =====================
 function om(id) { document.getElementById(id).classList.add('open'); }
 function cm(id) { document.getElementById(id).classList.remove('open'); }
 
+// ===================== 初期化 =====================
 renderEarn();
 </script>
 </body>
