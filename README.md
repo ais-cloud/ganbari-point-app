@@ -9,8 +9,7 @@
 
 ## 🔗 デモを触ってみる
 
-**[👉 こちらから実際に使えます](https://ais-cloud.github.io/ganbari-point-app
-/)**
+**[👉 こちらから実際に使えます](https://ais-cloud.github.io/ganbari-point-app)**
 
 スマホ・タブレット・PCのブラウザから、登録不要ですぐに試せます。
 
