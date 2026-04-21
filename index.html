@@ -265,14 +265,7 @@ body {
     <div class="stat-box"><div class="sb-label">今月</div><div class="sb-val" id="stMonth">0</div></div>
   </div>
 
-  <div class="card reward-sec">
-    <h3>📺 <span id="rYtName">YouTube</span></h3>
-    <div class="reward-grid" id="rYtGrid"></div>
-  </div>
-  <div class="card reward-sec">
-    <h3>🎮 <span id="rSwName">Switch</span></h3>
-    <div class="reward-grid" id="rSwGrid"></div>
-  </div>
+  <div id="rewardCards"></div>
 
   <div class="card use-section">
     <h3 style="font-size:15px;margin-bottom:10px;">ポイントをつかう</h3>
@@ -321,15 +314,9 @@ body {
   </div>
 
   <div class="s-card">
-    <h3>🏷️ ごほうびの名前</h3>
-    <div class="s-row">
-      <span>ごほうび①</span>
-      <input type="text" id="cfgYt" value="YouTube" oninput="saveCfg()">
-    </div>
-    <div class="s-row">
-      <span>ごほうび②</span>
-      <input type="text" id="cfgSw" value="Switch" oninput="saveCfg()">
-    </div>
+    <h3>🎁 ごほうび</h3>
+    <div id="rewardManage"></div>
+    <button class="s-btn green" style="width:100%;margin-top:10px;padding:12px;" onclick="openAddReward()">＋ ごほうびを追加</button>
   </div>
 
   <div class="s-card">
@@ -460,6 +447,28 @@ body {
       <button class="btn-cancel" onclick="cm('mEdit')">キャンセル</button>
       <button class="btn-ok" onclick="saveItem()">保存</button>
     </div>
+    <button id="btnDelItem" style="display:none;margin-top:10px;width:100%;padding:10px;background:none;border:1px solid #f5576c;color:#f5576c;border-radius:10px;font-size:13px;cursor:pointer;" onclick="deleteItem()">🗑 この項目を削除</button>
+  </div>
+</div>
+
+<!-- モーダル: ごほうび追加/編集 -->
+<div class="overlay" id="mRwEdit">
+  <div class="modal">
+    <h3 id="rwEditTitle">ごほうびを追加</h3>
+    <div class="edit-field">
+      <label>名前</label>
+      <input type="text" id="rwEditName" placeholder="例：YouTube、おやつ">
+    </div>
+    <div class="edit-field">
+      <label>ポイント交換オプション</label>
+      <input type="text" id="rwEditOpts" placeholder="例：15, 30">
+      <div style="font-size:11px;color:#999;margin-top:4px;">数字をカンマ区切りで入力（1つの数字＝1つのボタン）</div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="cm('mRwEdit')">キャンセル</button>
+      <button class="btn-ok" onclick="saveReward()">保存</button>
+    </div>
+    <button id="btnDelReward" style="display:none;margin-top:10px;width:100%;padding:10px;background:none;border:1px solid #f5576c;color:#f5576c;border-radius:10px;font-size:13px;cursor:pointer;" onclick="deleteReward()">🗑 このごほうびを削除</button>
   </div>
 </div>
 
@@ -652,12 +661,19 @@ function undoLast() {
 function esc(s) { const el = document.createElement('span'); el.textContent = s; return el.innerHTML; }
 
 // ===================== ポイント画面 =====================
-const YT_OPTS = [15, 30];
-const SW_OPTS = [5, 10, 15, 30];
 let pendRw = null;
 
+function getRewards() {
+  const c = C();
+  if (Array.isArray(c.rewards) && c.rewards.length > 0) return c.rewards;
+  return [
+    { name: c.yt || 'YouTube', opts: [15, 30] },
+    { name: c.sw || 'Switch', opts: [5, 10, 15, 30] },
+  ];
+}
+
 function renderPoints() {
-  const d = load(); const c = C(); const pts = d.points;
+  const d = load(); const pts = d.points;
   document.getElementById('balance').textContent = pts;
   document.getElementById('stToday').textContent = earnedToday(d.history);
 
@@ -667,15 +683,17 @@ function renderPoints() {
   document.getElementById('stWeek').textContent = earnedRange(d.history, weekStart);
   document.getElementById('stMonth').textContent = earnedRange(d.history, monthStart);
 
-  document.getElementById('rYtName').textContent = c.yt;
-  document.getElementById('rSwName').textContent = c.sw;
-
-  document.getElementById('rYtGrid').innerHTML = YT_OPTS.map(m =>
-    `<button class="reward-btn yt" onclick="confirmRw('${c.yt}',${m})" ${pts<m?'disabled':''}><span class="rb-min">${m}分</span><span class="rb-cost">${m}pt</span></button>`
-  ).join('');
-  document.getElementById('rSwGrid').innerHTML = SW_OPTS.map(m =>
-    `<button class="reward-btn sw" onclick="confirmRw('${c.sw}',${m})" ${pts<m?'disabled':''}><span class="rb-min">${m}分</span><span class="rb-cost">${m}pt</span></button>`
-  ).join('');
+  const rewards = getRewards();
+  document.getElementById('rewardCards').innerHTML = rewards.length === 0
+    ? '<div class="card"><div class="empty-msg">設定からごほうびを追加してください</div></div>'
+    : rewards.map((rw, idx) => `
+        <div class="card reward-sec">
+          <h3>🎁 ${esc(rw.name)}</h3>
+          <div class="reward-grid">
+            ${(rw.opts || []).map(m => `<button class="reward-btn" onclick="clickRw(${idx},${m})" ${pts<m?'disabled':''}><span class="rb-min">${m}分</span><span class="rb-cost">${m}pt</span></button>`).join('')}
+          </div>
+        </div>
+      `).join('');
 
   document.getElementById('btnUse').disabled = pts <= 0;
 
@@ -685,6 +703,11 @@ function renderPoints() {
     : used.map(h =>
       `<div class="history-item"><div class="hi-meta"><span class="hi-memo">${esc(h.memo||'ポイント使用')}</span><span class="hi-date">${fmtDate(h.date)}</span></div><span class="hi-amt minus">${h.amount} pt</span></div>`
     ).join('');
+}
+
+function clickRw(idx, m) {
+  const rw = getRewards()[idx];
+  if (rw) confirmRw(rw.name, m);
 }
 
 function confirmRw(name, min) {
@@ -761,8 +784,6 @@ function renderSettings() {
   const d=load(), c=C();
   document.getElementById('pinSt').textContent = c.pin ? '設定済み' : '未設定';
   document.getElementById('btnClearPin').disabled = !c.pin;
-  document.getElementById('cfgYt').value = c.yt;
-  document.getElementById('cfgSw').value = c.sw;
   document.getElementById('cfgBronze').value = c.bronze;
   document.getElementById('cfgSilver').value = c.silver;
   document.getElementById('cfgGold').value = c.gold;
@@ -780,15 +801,31 @@ function renderSettings() {
       <button class="s-btn blue" style="padding:6px 10px;font-size:12px;" onclick="editItem(${idx})">編集</button>
     </div>`
   ).join('');
+
+  const rewards = getRewards();
+  document.getElementById('rewardManage').innerHTML = rewards.length === 0
+    ? '<div class="empty-msg" style="padding:8px;">まだ登録されていません</div>'
+    : rewards.map((rw, idx) =>
+      `<div class="item-manage-row">
+        <span class="im-name">🎁 ${esc(rw.name)}</span>
+        <span class="im-pts" style="min-width:auto;font-size:11px;color:#888;font-weight:normal;">${(rw.opts||[]).join(', ')}pt</span>
+        <button class="s-btn blue" style="padding:6px 10px;font-size:12px;" onclick="editReward(${idx})">編集</button>
+      </div>`
+    ).join('');
 }
 
 function saveCfg() {
   const d=load(); if(!d.cfg) d.cfg={};
-  d.cfg.yt=document.getElementById('cfgYt').value;
-  d.cfg.sw=document.getElementById('cfgSw').value;
   d.cfg.bronze=parseInt(document.getElementById('cfgBronze').value)||3;
   d.cfg.silver=parseInt(document.getElementById('cfgSilver').value)||5;
   d.cfg.gold=parseInt(document.getElementById('cfgGold').value)||8;
+  save(d);
+}
+
+function saveRewards(rewards) {
+  const d=load(); if(!d.cfg) d.cfg={};
+  d.cfg.rewards = rewards;
+  delete d.cfg.yt; delete d.cfg.sw;
   save(d);
 }
 
@@ -808,6 +845,7 @@ function openAddItem() {
   document.getElementById('editTitle').textContent='項目を追加';
   document.getElementById('editName').value='';
   document.getElementById('editPts').value='1';
+  document.getElementById('btnDelItem').style.display='none';
   om('mEdit');
 }
 function editItem(idx) {
@@ -816,6 +854,7 @@ function editItem(idx) {
   document.getElementById('editTitle').textContent='項目を編集';
   document.getElementById('editName').value=it.name;
   document.getElementById('editPts').value=it.pts;
+  document.getElementById('btnDelItem').style.display='block';
   om('mEdit');
 }
 function saveItem() {
@@ -830,6 +869,55 @@ function saveItem() {
     d.items[editIdx].pts=pts;
   }
   save(d); cm('mEdit'); renderSettings();
+}
+function deleteItem() {
+  if(editIdx<0) return;
+  const d=load(), it=d.items[editIdx];
+  if(!confirm(`「${it.name}」を削除しますか？\n※これまでの獲得履歴は残ります`)) return;
+  d.items.splice(editIdx, 1);
+  save(d); cm('mEdit'); renderSettings();
+}
+
+// ===================== ごほうび管理 =====================
+let rwEditIdx = -1;
+function openAddReward() {
+  rwEditIdx=-1;
+  document.getElementById('rwEditTitle').textContent='ごほうびを追加';
+  document.getElementById('rwEditName').value='';
+  document.getElementById('rwEditOpts').value='';
+  document.getElementById('btnDelReward').style.display='none';
+  om('mRwEdit');
+}
+function editReward(idx) {
+  rwEditIdx=idx;
+  const rw=getRewards()[idx];
+  document.getElementById('rwEditTitle').textContent='ごほうびを編集';
+  document.getElementById('rwEditName').value=rw.name;
+  document.getElementById('rwEditOpts').value=(rw.opts||[]).join(', ');
+  document.getElementById('btnDelReward').style.display='block';
+  om('mRwEdit');
+}
+function saveReward() {
+  const name=document.getElementById('rwEditName').value.trim();
+  const optsRaw=document.getElementById('rwEditOpts').value;
+  if(!name) { alert('名前を入力してください'); return; }
+  const opts = optsRaw.split(/[,、]/).map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+  if(opts.length === 0) { alert('ポイント数を1つ以上入力してください（例：15, 30）'); return; }
+  const rewards = getRewards().slice();
+  if(rwEditIdx===-1) {
+    rewards.push({ name, opts });
+  } else {
+    rewards[rwEditIdx] = { name, opts };
+  }
+  saveRewards(rewards); cm('mRwEdit'); renderSettings();
+}
+function deleteReward() {
+  if(rwEditIdx<0) return;
+  const rewards = getRewards().slice();
+  const rw = rewards[rwEditIdx];
+  if(!confirm(`「${rw.name}」を削除しますか？`)) return;
+  rewards.splice(rwEditIdx, 1);
+  saveRewards(rewards); cm('mRwEdit'); renderSettings();
 }
 
 function resetStep1() { om('mReset1'); }
