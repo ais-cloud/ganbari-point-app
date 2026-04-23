@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>ポイントアプリ</title>
+<title>がんばりポイント</title>
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
@@ -598,6 +600,7 @@ function renderEarn() {
   document.getElementById('itemList').innerHTML = items.length === 0
     ? '<div class="empty-msg">表示する項目がありません</div>'
     : items.map(it => {
+        // 今日この項目をやった回数
         const t = todayStr();
         const cnt = d.history.filter(h => h.amount > 0 && h.itemId === it.id && h.date.slice(0,10) === t).length;
         return `<div class="item-row">
@@ -609,6 +612,7 @@ function renderEarn() {
         </div>`;
       }).join('');
 
+  // 今日の獲得ログ
   const t = todayStr();
   const todayEntries = d.history.filter(h => h.amount > 0 && h.date.slice(0,10) === t);
   const logEl = document.getElementById('todayLog');
@@ -666,6 +670,7 @@ let pendRw = null;
 function getRewards() {
   const c = C();
   if (Array.isArray(c.rewards) && c.rewards.length > 0) return c.rewards;
+  // 旧データからの自動移行
   return [
     { name: c.yt || 'YouTube', opts: [15, 30] },
     { name: c.sw || 'Switch', opts: [5, 10, 15, 30] },
@@ -697,6 +702,7 @@ function renderPoints() {
 
   document.getElementById('btnUse').disabled = pts <= 0;
 
+  // 使用履歴
   const used = d.history.filter(h => h.amount < 0).slice().reverse().slice(0, 10);
   document.getElementById('useHistory').innerHTML = used.length === 0
     ? '<div class="empty-msg">まだ使っていません</div>'
@@ -725,6 +731,7 @@ function doReward() {
   save(d); cm('mReward'); pendRw=null; renderPoints();
 }
 
+// つかう
 let useV = 1;
 function openUseModal() {
   useV=1; document.getElementById('useVal').textContent=1;
@@ -772,6 +779,7 @@ function renderCal() {
   }
   document.getElementById('calGrid').innerHTML=html;
 
+  // 今週・今月
   const now=new Date();
   const ws=new Date(now); ws.setDate(now.getDate()-now.getDay()); ws.setHours(0,0,0,0);
   const ms=new Date(now.getFullYear(),now.getMonth(),1);
@@ -802,6 +810,7 @@ function renderSettings() {
     </div>`
   ).join('');
 
+  // ごほうび管理
   const rewards = getRewards();
   document.getElementById('rewardManage').innerHTML = rewards.length === 0
     ? '<div class="empty-msg" style="padding:8px;">まだ登録されていません</div>'
@@ -825,6 +834,7 @@ function saveCfg() {
 function saveRewards(rewards) {
   const d=load(); if(!d.cfg) d.cfg={};
   d.cfg.rewards = rewards;
+  // 旧フィールドは削除して新形式に統一
   delete d.cfg.yt; delete d.cfg.sw;
   save(d);
 }
@@ -839,7 +849,7 @@ function toggleItem(idx) {
   const d=load(); d.items[idx].visible=!d.items[idx].visible; save(d); renderSettings();
 }
 
-let editIdx = -1;
+let editIdx = -1; // -1 = 追加
 function openAddItem() {
   editIdx=-1;
   document.getElementById('editTitle').textContent='項目を追加';
