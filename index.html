@@ -69,13 +69,13 @@ body {
 }
 .item-done.done-anim { animation:donePulse 0.45s ease-out; }
 @keyframes floatUp {
-  0%   { opacity:1; transform:translate(-50%, 0)    scale(1); }
-  55%  { opacity:1; transform:translate(-50%,-52px) scale(1.18); }
-  100% { opacity:0; transform:translate(-50%,-76px) scale(0.85); }
+  0%   { opacity:1; transform:translate(-50%, 0)                   scale(1); }
+  55%  { opacity:1; transform:translate(calc(-50% - 52px), -46px)  scale(1.18); }
+  100% { opacity:0; transform:translate(calc(-50% - 72px), -68px)  scale(0.85); }
 }
 .earn-popup {
   position:fixed; font-size:22px; font-weight:bold;
-  color:#1a8a45; text-shadow:0 1px 4px rgba(0,0,0,0.14);
+  color:#667eea; text-shadow:0 1px 4px rgba(102,126,234,0.25);
   pointer-events:none; z-index:300;
   animation:floatUp 1.5s ease-out forwards;
 }
@@ -364,6 +364,20 @@ body {
     </div>
   </div>
 
+  <div class="s-card">
+    <h3>ℹ️ アプリ情報</h3>
+    <div class="s-row">
+      <span>バージョン</span>
+      <span id="verNum" style="color:#667eea;font-weight:bold;"></span>
+    </div>
+    <div class="s-row">
+      <span>最終更新</span>
+      <span id="verDate" style="color:#888;"></span>
+    </div>
+    <button class="s-btn blue" style="width:100%;margin-top:12px;padding:12px;" onclick="checkUpdate()">🔄 最新版を確認する</button>
+    <p style="font-size:11px;color:#bbb;text-align:center;margin-top:8px;">タップするとページを再読み込みします</p>
+  </div>
+
   <span class="danger-link" onclick="resetStep1()">すべてのデータを削除...</span>
 </div>
 
@@ -504,6 +518,10 @@ body {
 <div id="toast"></div>
 
 <script>
+// ===================== バージョン情報（更新時にここを変更）=====================
+const APP_VERSION = 'v1.6';
+const APP_UPDATED = '2026/04/24';
+
 // ===================== データ =====================
 const DEFAULT_ITEMS = [
   { id:'a', name:'しゅくだい', pts:10, visible:true },
@@ -845,6 +863,8 @@ function renderSettings() {
   document.getElementById('cfgBronze').value = c.bronze;
   document.getElementById('cfgSilver').value = c.silver;
   document.getElementById('cfgGold').value = c.gold;
+  document.getElementById('verNum').textContent = APP_VERSION;
+  document.getElementById('verDate').textContent = APP_UPDATED;
 
   const items = d.items || [];
   document.getElementById('itemManage').innerHTML = items.map((it, idx) =>
@@ -978,6 +998,12 @@ function deleteReward() {
   if(!confirm(`「${rw.name}」を削除しますか？`)) return;
   rewards.splice(rwEditIdx, 1);
   saveRewards(rewards); cm('mRwEdit'); renderSettings();
+}
+
+function checkUpdate() {
+  const url = new URL(location.href);
+  url.searchParams.set('_t', Date.now());
+  location.href = url.toString();
 }
 
 function resetStep1() { om('mReset1'); }
