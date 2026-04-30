@@ -111,7 +111,7 @@ body {
 }
 #toast.show { opacity:1; }
 
-/* データ削除リンク */
+/* データ削除リング */
 .danger-link {
   display:block; text-align:center; color:#ccc; font-size:12px;
   margin-top:24px; cursor:pointer; text-decoration:underline;
@@ -276,7 +276,7 @@ body {
 </head>
 <body>
 
-<!-- ===== ためる画面 ===== -->
+<!-- ===== ためる㔻面 ===== -->
 <div class="page active" id="page-earn">
   <div class="today-banner">
     <div class="tb-date" id="todayDate"></div>
@@ -293,7 +293,7 @@ body {
 <!-- ===== ポイント画面 ===== -->
 <div class="page" id="page-points">
   <div class="balance-card">
-    <div class="bc-label">つかえるポイント</div>
+    <div class="bc-label">つかえをポイント</div>
     <div class="bc-val" id="balance">0</div>
     <div class="bc-unit">ポイント</div>
   </div>
@@ -404,7 +404,7 @@ body {
     <h3>－ 任意のポイントをつかう</h3>
     <div class="stepper">
       <button onclick="stepV(-1)">−</button>
-      <input type="number" class="num-input" id="useVal" value="1" min="1" max="9999" inputmode="numeric">
+      <input type="number" class="num-input" id="useVal" value="1" min="1" max="9999" inputmode="numeric" oninput="adjustUseFont()">
       <button onclick="stepV(1)">＋</button>
     </div>
     <input class="memo-input" id="useMemo" placeholder="メモ（例：おやつ）">
@@ -533,8 +533,8 @@ body {
 
 <script>
 // ===================== バージョン情報（更新時にここを変更）=====================
-const APP_VERSION = 'v1.7';
-const APP_UPDATED = '2026/04/28';
+const APP_VERSION = 'v1.8';
+const APP_UPDATED = '2026/04/30';
 
 // ===================== データ =====================
 const DEFAULT_ITEMS = [
@@ -545,7 +545,7 @@ const DEFAULT_ITEMS = [
   { id:'e', name:'プリントC', pts:7, visible:true },
   { id:'f', name:'さんすうプリント', pts:7, visible:true },
   { id:'g', name:'漢字ドリル', pts:10, visible:true },
-  { id:'h', name:'えいごリスニング', pts:15, visible:true },
+  { id:'h', name:'ぉいすリスニング', pts:15, visible:true },
   { id:'i', name:'ピアノの練習', pts:20, visible:true },
 ];
 
@@ -814,7 +814,8 @@ function getUseV() {
   const v = parseInt(document.getElementById('useVal').value);
   return (isNaN(v) || v < 1) ? 1 : Math.min(9999, v);
 }
-function setUseV(v) { document.getElementById('useVal').value = Math.max(1, Math.min(9999, v)); }
+function setUseV(v) { const el=document.getElementById('useVal'); el.value=Math.max(1,Math.min(9999,v)); adjustUseFont(); }
+function adjustUseFont() { const el=document.getElementById('useVal'); const len=String(el.value||'0').length; el.style.fontSize=len>=4?'28px':'38px'; }
 function openUseModal() {
   const c = C();
   if (c.pin) {
