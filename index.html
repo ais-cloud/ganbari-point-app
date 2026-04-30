@@ -247,6 +247,15 @@ body {
 .stepper { display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:16px; }
 .stepper button { width:44px; height:44px; border-radius:50%; border:none; background:#667eea; color:#fff; font-size:22px; font-weight:bold; cursor:pointer; }
 .stepper .num { font-size:44px; font-weight:bold; min-width:60px; }
+.stepper .num-input {
+  font-size:38px; font-weight:bold; width:110px; text-align:center;
+  border:2px solid #ddd; border-radius:12px; padding:4px 8px;
+  font-family:inherit; color:#333;
+  -moz-appearance:textfield;
+}
+.stepper .num-input::-webkit-outer-spin-button,
+.stepper .num-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.stepper .num-input:focus { outline:none; border-color:#667eea; }
 .memo-input { width:100%; padding:10px; border:1px solid #ddd; border-radius:10px; font-size:14px; margin-bottom:16px; font-family:inherit; }
 
 /* PIN */
@@ -395,7 +404,7 @@ body {
     <h3>－ 任意のポイントをつかう</h3>
     <div class="stepper">
       <button onclick="stepV(-1)">−</button>
-      <span class="num" id="useVal">1</span>
+      <input type="number" class="num-input" id="useVal" value="1" min="1" max="9999" inputmode="numeric">
       <button onclick="stepV(1)">＋</button>
     </div>
     <input class="memo-input" id="useMemo" placeholder="メモ（例：おやつ）">
@@ -503,6 +512,11 @@ body {
       <input type="text" id="rwEditName" placeholder="例：YouTube、おやつ">
     </div>
     <div class="edit-field">
+      <label>単位</label>
+      <input type="text" id="rwEditUnit" placeholder="例：分、円、個">
+      <div style="font-size:11px;color:#999;margin-top:4px;">ボタンに表示される単位（空欄なら「分」）</div>
+    </div>
+    <div class="edit-field">
       <label>ポイント交換オプション</label>
       <input type="text" id="rwEditOpts" placeholder="例：15, 30">
       <div style="font-size:11px;color:#999;margin-top:4px;">数字をカンマ区切りで入力（1つの数字＝1つのボタン）</div>
@@ -519,8 +533,8 @@ body {
 
 <script>
 // ===================== バージョン情報（更新時にここを変更）=====================
-const APP_VERSION = 'v1.6';
-const APP_UPDATED = '2026/04/24';
+const APP_VERSION = 'v1.7';
+const APP_UPDATED = '2026/04/28';
 
 // ===================== データ =====================
 const DEFAULT_ITEMS = [
@@ -730,11 +744,14 @@ let pendRw = null;
 
 function getRewards() {
   const c = C();
-  if (Array.isArray(c.rewards) && c.rewards.length > 0) return c.rewards;
+  if (Array.isArray(c.rewards) && c.rewards.length > 0) {
+    // 古いデータに unit が無い場合は「分」を補完
+    return c.rewards.map(rw => ({ unit: '分', ...rw }));
+  }
   // 旧データからの自動移行
   return [
-    { name: c.yt || 'YouTube', opts: [15, 30] },
-    { name: c.sw || 'Switch', opts: [5, 10, 15, 30] },
+    { name: c.yt || 'YouTube', opts: [15, 30], unit: '分' },
+    { name: c.sw || 'Switch',  opts: [5, 10, 15, 30], unit: '分' },
   ];
 }
 
@@ -756,7 +773,7 @@ function renderPoints() {
         <div class="card reward-sec">
           <h3>🎁 ${esc(rw.name)}</h3>
           <div class="reward-grid">
-            ${(rw.opts || []).map(m => `<button class="reward-btn" onclick="clickRw(${idx},${m})" ${pts<m?'disabled':''}><span class="rb-min">${m}分</span><span class="rb-cost">${m}pt</span></button>`).join('')}
+            ${(rw.opts || []).map(m => `<button class="reward-btn" onclick="clickRw(${idx},${m})" ${pts<m?'disabled':''}><span class="rb-min">${m}${esc(rw.unit||'分')}</span><span class="rb-cost">${m}pt</span></button>`).join('')}
           </div>
         </div>
       `).join('');
@@ -774,43 +791,47 @@ function renderPoints() {
 
 function clickRw(idx, m) {
   const rw = getRewards()[idx];
-  if (rw) confirmRw(rw.name, m);
+  if (rw) confirmRw(rw.name, m, rw.unit || '分');
 }
 
-function confirmRw(name, min) {
-  pendRw = { name, min };
-  document.getElementById('rwTitle').textContent = `🎁 ${name} ${min}分`;
-  document.getElementById('rwDesc').textContent = `${min} ポイントを使って ${name} ${min}分 に交換しますか？`;
+function confirmRw(name, val, unit) {
+  pendRw = { name, val, unit };
+  document.getElementById('rwTitle').textContent = `🎁 ${name} ${val}${unit}`;
+  document.getElementById('rwDesc').textContent = `${val} ポイントを使って ${name} ${val}${unit} に交換しますか？`;
   om('mReward');
 }
 function doReward() {
   if (!pendRw) return;
   const d = load();
-  if (d.points < pendRw.min) { alert('ポイントが足りません！'); cm('mReward'); return; }
-  d.points -= pendRw.min;
-  d.history.push({ date:new Date().toISOString(), amount:-pendRw.min, memo:`🎁 ${pendRw.name} ${pendRw.min}分` });
+  if (d.points < pendRw.val) { alert('ポイントが足りません！'); cm('mReward'); return; }
+  d.points -= pendRw.val;
+  d.history.push({ date:new Date().toISOString(), amount:-pendRw.val, memo:`🎁 ${pendRw.name} ${pendRw.val}${pendRw.unit}` });
   save(d); cm('mReward'); pendRw=null; renderPoints();
 }
 
 // つかう
-let useV = 1;
+function getUseV() {
+  const v = parseInt(document.getElementById('useVal').value);
+  return (isNaN(v) || v < 1) ? 1 : Math.min(9999, v);
+}
+function setUseV(v) { document.getElementById('useVal').value = Math.max(1, Math.min(9999, v)); }
 function openUseModal() {
   const c = C();
   if (c.pin) {
     pinBuf=''; updDots('pinDots',0); document.getElementById('pinErr').textContent='';
-    pinCb = () => { useV=1; document.getElementById('useVal').textContent=1; document.getElementById('useMemo').value=''; om('mUse'); };
+    pinCb = () => { setUseV(1); document.getElementById('useMemo').value=''; om('mUse'); };
     om('mPin');
   } else {
-    useV=1; document.getElementById('useVal').textContent=1;
-    document.getElementById('useMemo').value=''; om('mUse');
+    setUseV(1); document.getElementById('useMemo').value=''; om('mUse');
   }
 }
-function stepV(d) { useV=Math.max(1,Math.min(99,useV+d)); document.getElementById('useVal').textContent=useV; }
+function stepV(d) { setUseV(getUseV() + d); }
 function doUse() {
-  const d=load();
-  if (d.points < useV) { alert('ポイントが足りません！'); return; }
-  d.points -= useV;
-  d.history.push({ date:new Date().toISOString(), amount:-useV, memo:document.getElementById('useMemo').value });
+  const d = load();
+  const v = getUseV();
+  if (d.points < v) { alert('ポイントが足りません！'); return; }
+  d.points -= v;
+  d.history.push({ date:new Date().toISOString(), amount:-v, memo:document.getElementById('useMemo').value });
   save(d); cm('mUse'); renderPoints();
 }
 
@@ -886,7 +907,7 @@ function renderSettings() {
     ? '<div class="empty-msg" style="padding:8px;">まだ登録されていません</div>'
     : rewards.map((rw, idx) =>
       `<div class="item-manage-row">
-        <span class="im-name">🎁 ${esc(rw.name)}</span>
+        <span class="im-name">🎁 ${esc(rw.name)} <span style="font-size:11px;color:#aaa;font-weight:normal;">(${esc(rw.unit||'分')})</span></span>
         <span class="im-pts" style="min-width:auto;font-size:11px;color:#888;font-weight:normal;">${(rw.opts||[]).join(', ')}pt</span>
         <button class="s-btn blue" style="padding:6px 10px;font-size:12px;" onclick="editReward(${idx})">編集</button>
       </div>`
@@ -964,6 +985,7 @@ function openAddReward() {
   rwEditIdx=-1;
   document.getElementById('rwEditTitle').textContent='ごほうびを追加';
   document.getElementById('rwEditName').value='';
+  document.getElementById('rwEditUnit').value='';
   document.getElementById('rwEditOpts').value='';
   document.getElementById('btnDelReward').style.display='none';
   om('mRwEdit');
@@ -973,21 +995,23 @@ function editReward(idx) {
   const rw=getRewards()[idx];
   document.getElementById('rwEditTitle').textContent='ごほうびを編集';
   document.getElementById('rwEditName').value=rw.name;
+  document.getElementById('rwEditUnit').value=rw.unit||'分';
   document.getElementById('rwEditOpts').value=(rw.opts||[]).join(', ');
   document.getElementById('btnDelReward').style.display='block';
   om('mRwEdit');
 }
 function saveReward() {
   const name=document.getElementById('rwEditName').value.trim();
+  const unit=document.getElementById('rwEditUnit').value.trim() || '分';
   const optsRaw=document.getElementById('rwEditOpts').value;
   if(!name) { alert('名前を入力してください'); return; }
   const opts = optsRaw.split(/[,、]/).map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
   if(opts.length === 0) { alert('ポイント数を1つ以上入力してください（例：15, 30）'); return; }
   const rewards = getRewards().slice();
   if(rwEditIdx===-1) {
-    rewards.push({ name, opts });
+    rewards.push({ name, opts, unit });
   } else {
-    rewards[rwEditIdx] = { name, opts };
+    rewards[rwEditIdx] = { name, opts, unit };
   }
   saveRewards(rewards); cm('mRwEdit'); renderSettings();
 }
