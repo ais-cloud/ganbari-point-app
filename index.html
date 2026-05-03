@@ -12,15 +12,24 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
   background: #f0f4ff;
   color: #333;
-  min-height: 100vh;
-  padding-bottom: 72px;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#main-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 16px;
 }
 .page { display:none; padding:16px; max-width:480px; margin:0 auto; }
 .page.active { display:block; }
 
 /* タブ */
 .tab-nav {
-  position:fixed; bottom:0; left:0; right:0; height:64px;
+  height:64px; flex-shrink:0;
   background:#fff; display:flex; box-shadow:0 -1px 0 #e0e0e0; z-index:50;
 }
 .tab-nav button {
@@ -60,7 +69,7 @@ body {
 }
 .item-done:active { transform:scale(0.93); }
 .item-done:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
-/* やった！アニメーション */
+/* やた！アニメーション */
 @keyframes donePulse {
   0%  { transform:scale(1); box-shadow:0 0 0 0 rgba(39,174,96,0.6); }
   40% { transform:scale(1.2); box-shadow:0 0 0 10px rgba(39,174,96,0); }
@@ -275,6 +284,7 @@ body {
 </style>
 </head>
 <body>
+<div id="main-scroll">
 
 <!-- ===== ためる㔻面 ===== -->
 <div class="page active" id="page-earn">
@@ -390,6 +400,8 @@ body {
   <span class="danger-link" onclick="resetStep1()">すべてのデータを削除...</span>
 </div>
 
+</div><!-- /#main-scroll -->
+
 <!-- ===== タブ ===== -->
 <nav class="tab-nav">
   <button class="active" id="tab-earn"     onclick="switchTab('earn')"><span class="icon">📝</span>ためる</button>
@@ -407,7 +419,7 @@ body {
       <input type="number" class="num-input" id="useVal" value="1" min="1" max="9999" inputmode="numeric" oninput="adjustUseFont()">
       <button onclick="stepV(1)">＋</button>
     </div>
-    <input class="memo-input" id="useMemo" placeholder="メモ（例：おやつ）">
+    <input class="memo-input" id="useMemo" placeholder="メモ（例：Exc: ooÉTube、えうつ）">
     <div class="modal-btns">
       <button class="btn-cancel" onclick="cm('mUse')">やめる</button>
       <button class="btn-ok red" onclick="doUse()">つかう！</button>
@@ -415,7 +427,7 @@ body {
   </div>
 </div>
 
-<!-- モーダル: ごほうび確認 -->
+<!-- モーダル: ごほうび交換验 -->
 <div class="overlay" id="mReward">
   <div class="modal">
     <h3 id="rwTitle"></h3>
@@ -430,7 +442,7 @@ body {
 <!-- モーダル: PIN入力 -->
 <div class="overlay" id="mPin">
   <div class="modal">
-    <h3>🔒 PINを入力</h3>
+    <h3>🔒 PINを入力（4玡）</h3>
     <div class="pin-dots" id="pinDots"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
     <div class="pin-err" id="pinErr"></div>
     <div class="pin-pad">
@@ -439,23 +451,23 @@ body {
       <button onclick="pk(7)">7</button><button onclick="pk(8)">8</button><button onclick="pk(9)">9</button>
       <button class="blank"></button><button onclick="pk(0)">0</button><button onclick="pdel()">⌫</button>
     </div>
-    <button class="btn-cancel" style="width:100%;padding:12px;border:none;border-radius:12px;font-size:14px;cursor:pointer;" onclick="cm('mPin')">キャンセル</button>
+    <button class="btn-cancel" style="width:100%;padding:12px;border:none;border-radius:12px;font-size:14px;cursor:pointer;" onclick="cm('mPin')">㊭ャンセル</button>
   </div>
 </div>
 
 <!-- モーダル: PIN設定 -->
 <div class="overlay" id="mSetPin">
   <div class="modal">
-    <h3 id="spTitle">新しいPINを入力（4桁）</h3>
+    <h3 id="spTitle">新しいPINを入力（4敁）</h3>
     <div class="pin-dots" id="spDots"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
     <div class="pin-err" id="spErr"></div>
     <div class="pin-pad">
-      <button onclick="spk(1)">1</button><button onclick="spk(2)">2</button><button onclick="spk(3)">3</button>
+      <button onclick="spk1)">1</button><button onclick="spk(2)">2</button><button onclick="spk3)">3</button>
       <button onclick="spk(4)">4</button><button onclick="spk(5)">5</button><button onclick="spk(6)">6</button>
       <button onclick="spk(7)">7</button><button onclick="spk(8)">8</button><button onclick="spk(9)">9</button>
       <button class="blank"></button><button onclick="spk(0)">0</button><button onclick="spdel()">⌫</button>
     </div>
-    <button class="btn-cancel" style="width:100%;padding:12px;border:none;border-radius:12px;font-size:14px;cursor:pointer;" onclick="cm('mSetPin')">キャンセル</button>
+    <button class="btn-cancel" style="width:100%;padding:12px;border:none;border-radius:12px;font-size:14px;cursor:pointer;" onclick="cm('mSetPin')">㊭ャンセル</button>
   </div>
 </div>
 
@@ -533,8 +545,8 @@ body {
 
 <script>
 // ===================== バージョン情報（更新時にここを変更）=====================
-const APP_VERSION = 'v1.8';
-const APP_UPDATED = '2026/04/30';
+const APP_VERSION = 'v1.9';
+const APP_UPDATED = '2026/05/04';
 
 // ===================== データ =====================
 const DEFAULT_ITEMS = [
@@ -545,7 +557,7 @@ const DEFAULT_ITEMS = [
   { id:'e', name:'プリントC', pts:7, visible:true },
   { id:'f', name:'さんすうプリント', pts:7, visible:true },
   { id:'g', name:'漢字ドリル', pts:10, visible:true },
-  { id:'h', name:'ぉいすリスニング', pts:15, visible:true },
+  { id:'h', name:'きいすリスニング', pts:15, visible:true },
   { id:'i', name:'ピアノの練習', pts:20, visible:true },
 ];
 
@@ -768,7 +780,7 @@ function renderPoints() {
 
   const rewards = getRewards();
   document.getElementById('rewardCards').innerHTML = rewards.length === 0
-    ? '<div class="card"><div class="empty-msg">設定からごほうびを追加してください</div></div>'
+    ? '<div class="card"><div class="empty-msg">設定からあほうびを追加してください</div></div>'
     : rewards.map((rw, idx) => `
         <div class="card reward-sec">
           <h3>🎁 ${esc(rw.name)}</h3>
@@ -845,7 +857,7 @@ function chMonth(delta) { cM+=delta; if(cM<0){cM=11;cY--;} if(cM>11){cM=0;cY++;}
 function renderCal() {
   const c=C();
   const medals=[{min:c.gold,s:'🥇'},{min:c.silver,s:'🥈'},{min:c.bronze,s:'🥉'}];
-  document.getElementById('calLabel').textContent=`${cY}年${cM+1}月`;
+  document.getElementById('calLabel').textContent=`${cY}�T${cM+1}月`;
   document.getElementById('medalLeg').innerHTML=`<span>🥉 ${c.bronze}〜${c.silver-1}pt</span><span>🥈 ${c.silver}〜${c.gold-1}pt</span><span>🥇 ${c.gold}pt〜</span>`;
 
   const d=load(), dp={};
@@ -926,7 +938,7 @@ function saveCfg() {
 function saveRewards(rewards) {
   const d=load(); if(!d.cfg) d.cfg={};
   d.cfg.rewards = rewards;
-  // 旧フィールドは削除して新形式に統一
+  // 旧プィールドは削除して新形式に統一
   delete d.cfg.yt; delete d.cfg.sw;
   save(d);
 }
@@ -993,7 +1005,7 @@ function openAddReward() {
 }
 function editReward(idx) {
   rwEditIdx=idx;
-  const rw=getRewards()[idx];
+  const rw;getRewards()[idx];
   document.getElementById('rwEditTitle').textContent='ごほうびを編集';
   document.getElementById('rwEditName').value=rw.name;
   document.getElementById('rwEditUnit').value=rw.unit||'分';
@@ -1053,7 +1065,7 @@ function pdel() { pinBuf=pinBuf.slice(0,-1); updDots('pinDots',pinBuf.length); d
 let spBuf='', spStep=0, spFirst='';
 function openSetPin() {
   spBuf=''; spStep=0; spFirst='';
-  document.getElementById('spTitle').textContent='新しいPINを入力（4桁）';
+  document.getElementById('spTitle').textContent='新しぉPINを入力（4桍）';
   document.getElementById('spErr').textContent='';
   updDots('spDots',0); om('mSetPin');
 }
@@ -1072,7 +1084,7 @@ function spk(n) {
       } else {
         document.getElementById('spErr').textContent='PINが一致しません。最初からやり直してください';
         spBuf=''; spStep=0; spFirst='';
-        document.getElementById('spTitle').textContent='新しいPINを入力（4桁）'; updDots('spDots',0);
+        document.getElementById('spTitle').textContent='新しぉPINを入力（4桍）'; updDots('spDots',0);
       }
     }
   },200);
