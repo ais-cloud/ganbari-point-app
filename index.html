@@ -120,7 +120,7 @@ body {
 }
 #toast.show { opacity:1; }
 
-/* データ削除モンジ �>
+/* データ削除リング */
 .danger-link {
   display:block; text-align:center; color:#ccc; font-size:12px;
   margin-top:24px; cursor:pointer; text-decoration:underline;
@@ -679,7 +679,7 @@ function renderEarn() {
             <div class="item-name">${esc(it.name)}${cnt > 0 ? ` <span style="color:#667eea;font-size:12px;">×${cnt}</span>` : ''}</div>
             <div class="item-pts">＋${it.pts} ポイント</div>
           </div>
-          <button class="item-done" onclick="doEarn('${it.id}', this)">やっc��！</button>
+          <button class="item-done" onclick="doEarn('${it.id}', this)">やった！</button>
         </div>`;
       }).join('');
 
@@ -857,7 +857,7 @@ function chMonth(delta) { cM+=delta; if(cM<0){cM=11;cY--;} if(cM>11){cM=0;cY++;}
 function renderCal() {
   const c=C();
   const medals=[{min:c.gold,s:'🥇'},{min:c.silver,s:'🥈'},{min:c.bronze,s:'🥉'}];
-  document.getElementById('calLabel').textContent=`${cY}�T${cM+1}月`;
+  document.getElementById('calLabel').textContent=`${cY}年${cM+1}月`;
   document.getElementById('medalLeg').innerHTML=`<span>🥉 ${c.bronze}〜${c.silver-1}pt</span><span>🥈 ${c.silver}〜${c.gold-1}pt</span><span>🥇 ${c.gold}pt〜</span>`;
 
   const d=load(), dp={};
@@ -987,7 +987,7 @@ function saveItem() {
 function deleteItem() {
   if(editIdx<0) return;
   const d=load(), it=d.items[editIdx];
-  if(!confirm(`「${it.name}」を削除しますか？\n※これみでの獲得履歴は残ります`)) return;
+  if(!confirm(`「${it.name}」を削除しますか？\n※これまでの獲得履歴は残ります`)) return;
   d.items.splice(editIdx, 1);
   save(d); cm('mEdit'); renderSettings();
 }
