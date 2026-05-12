@@ -525,13 +525,18 @@ body {
     </div>
     <div class="edit-field">
       <label>単位</label>
-      <input type="text" id="rwEditUnit" placeholder="例：分、円、個">
-      <div style="font-size:11px;color:#999;margin-top:4px;">ボタンに表示される単位（空欄なら「分」）</div>
+      <input type="text" id="rwEditUnit" placeholder="例：個、杯、本">
+      <div style="font-size:11px;color:#999;margin-top:4px;">ボタンに表示される単位</div>
     </div>
     <div class="edit-field">
-      <label>ポイント交換オプション</label>
-      <input type="text" id="rwEditOpts" placeholder="例：15, 30">
-      <div style="font-size:11px;color:#999;margin-top:4px;">数字をカンマ区切りで入力（1つの数字＝1つのボタン）</div>
+      <label>もらえる数量</label>
+      <input type="text" id="rwEditOpts" placeholder="例：1　または　1, 2, 3">
+      <div style="font-size:11px;color:#999;margin-top:4px;">カンマ区切りで複数のボタンを作れます</div>
+    </div>
+    <div class="edit-field">
+      <label>消費するポイント数</label>
+      <input type="text" id="rwEditCosts" placeholder="例：40　または　40, 80, 120">
+      <div style="font-size:11px;color:#999;margin-top:4px;">数量1つに対応するポイント数（数量が複数の場合はカンマ区切り）</div>
     </div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="cm('mRwEdit')">キャンセル</button>
@@ -557,7 +562,7 @@ const DEFAULT_ITEMS = [
   { id:'e', name:'プリントC', pts:7, visible:true },
   { id:'f', name:'さんすうプリント', pts:7, visible:true },
   { id:'g', name:'漢字ドリル', pts:10, visible:true },
-  { id:'h', name:'ぉいすリスニング', pts:15, visible:true },
+  { id:'h', name:'リスニング5分', pts:15, visible:true },
   { id:'i', name:'ピアノの練習', pts:20, visible:true },
 ];
 
@@ -757,13 +762,13 @@ let pendRw = null;
 function getRewards() {
   const c = C();
   if (Array.isArray(c.rewards) && c.rewards.length > 0) {
-    // 古いデータに unit が無い場合は「分」を補完
-    return c.rewards.map(rw => ({ unit: '分', ...rw }));
+    // costs未保存の旧データはoptsと同値で補完
+    return c.rewards.map(rw => ({ unit: '分', costs: rw.opts, ...rw }));
   }
   // 旧データからの自動移行
   return [
-    { name: c.yt || 'YouTube', opts: [15, 30], unit: '分' },
-    { name: c.sw || 'Switch',  opts: [5, 10, 15, 30], unit: '分' },
+    { name: c.yt || 'YouTube', opts: [15, 30], costs: [15, 30], unit: '分' },
+    { name: c.sw || 'Switch',  opts: [5, 10, 15, 30], costs: [5, 10, 15, 30], unit: '分' },
   ];
 }
 
@@ -785,7 +790,7 @@ function renderPoints() {
         <div class="card reward-sec">
           <h3>🎁 ${esc(rw.name)}</h3>
           <div class="reward-grid">
-            ${(rw.opts || []).map(m => `<button class="reward-btn" onclick="clickRw(${idx},${m})" ${pts<m?'disabled':''}><span class="rb-min">${m}${esc(rw.unit||'分')}</span><span class="rb-cost">${m}pt</span></button>`).join('')}
+            ${(rw.opts || []).map((qty, i) => { const cost=(rw.costs||rw.opts)[i]||qty; return `<button class="reward-btn" onclick="clickRw(${idx},${i})" ${pts<cost?'disabled':''}><span class="rb-min">${qty}${esc(rw.unit||'分')}</span><span class="rb-cost">${cost}pt</span></button>`; }).join('')}
           </div>
         </div>
       `).join('');
@@ -801,23 +806,26 @@ function renderPoints() {
     ).join('');
 }
 
-function clickRw(idx, m) {
+function clickRw(idx, optIdx) {
   const rw = getRewards()[idx];
-  if (rw) confirmRw(rw.name, m, rw.unit || '分');
+  if (!rw) return;
+  const qty = (rw.opts||[])[optIdx];
+  const cost = (rw.costs||rw.opts)[optIdx] || qty;
+  confirmRw(rw.name, qty, cost, rw.unit || '分');
 }
 
-function confirmRw(name, val, unit) {
-  pendRw = { name, val, unit };
-  document.getElementById('rwTitle').textContent = `🎁 ${name} ${val}${unit}`;
-  document.getElementById('rwDesc').textContent = `${val} ポイントを使って ${name} ${val}${unit} に交換しますか？`;
+function confirmRw(name, qty, cost, unit) {
+  pendRw = { name, qty, cost, unit };
+  document.getElementById('rwTitle').textContent = `🎁 ${name} ${qty}${unit}`;
+  document.getElementById('rwDesc').textContent = `${cost}pt を使って ${name} ${qty}${unit} に交換しますか？`;
   om('mReward');
 }
 function doReward() {
   if (!pendRw) return;
   const d = load();
-  if (d.points < pendRw.val) { alert('ポイントが足りません！'); cm('mReward'); return; }
-  d.points -= pendRw.val;
-  d.history.push({ date:new Date().toISOString(), amount:-pendRw.val, memo:`🎁 ${pendRw.name} ${pendRw.val}${pendRw.unit}` });
+  if (d.points < pendRw.cost) { alert('ポイントが足りません！'); cm('mReward'); return; }
+  d.points -= pendRw.cost;
+  d.history.push({ date:new Date().toISOString(), amount:-pendRw.cost, memo:`🎁 ${pendRw.name} ${pendRw.qty}${pendRw.unit}` });
   save(d); cm('mReward'); pendRw=null; renderPoints();
 }
 
@@ -920,8 +928,8 @@ function renderSettings() {
     ? '<div class="empty-msg" style="padding:8px;">まだ登録されていません</div>'
     : rewards.map((rw, idx) =>
       `<div class="item-manage-row">
-        <span class="im-name">🎁 ${esc(rw.name)} <span style="font-size:11px;color:#aaa;font-weight:normal;">(${esc(rw.unit||'分')})</span></span>
-        <span class="im-pts" style="min-width:auto;font-size:11px;color:#888;font-weight:normal;">${(rw.opts||[]).join(', ')}pt</span>
+        <span class="im-name">🎁 ${esc(rw.name)}</span>
+        <span class="im-pts" style="min-width:auto;font-size:11px;color:#888;font-weight:normal;">${(rw.opts||[]).map((q,i)=>`${q}${esc(rw.unit||'分')}/${(rw.costs||rw.opts)[i]||q}pt`).join(', ')}</span>
         <button class="s-btn blue" style="padding:6px 10px;font-size:12px;" onclick="editReward(${idx})">編集</button>
       </div>`
     ).join('');
@@ -1000,6 +1008,7 @@ function openAddReward() {
   document.getElementById('rwEditName').value='';
   document.getElementById('rwEditUnit').value='';
   document.getElementById('rwEditOpts').value='';
+  document.getElementById('rwEditCosts').value='';
   document.getElementById('btnDelReward').style.display='none';
   om('mRwEdit');
 }
@@ -1010,21 +1019,27 @@ function editReward(idx) {
   document.getElementById('rwEditName').value=rw.name;
   document.getElementById('rwEditUnit').value=rw.unit||'分';
   document.getElementById('rwEditOpts').value=(rw.opts||[]).join(', ');
+  document.getElementById('rwEditCosts').value=(rw.costs||rw.opts||[]).join(', ');
   document.getElementById('btnDelReward').style.display='block';
   om('mRwEdit');
 }
 function saveReward() {
   const name=document.getElementById('rwEditName').value.trim();
-  const unit=document.getElementById('rwEditUnit').value.trim() || '分';
+  const unit=document.getElementById('rwEditUnit').value.trim() || '個';
   const optsRaw=document.getElementById('rwEditOpts').value;
+  const costsRaw=document.getElementById('rwEditCosts').value;
   if(!name) { alert('名前を入力してください'); return; }
   const opts = optsRaw.split(/[,、]/).map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
-  if(opts.length === 0) { alert('ポイント数を1つ以上入力してください（例：15, 30）'); return; }
+  if(opts.length === 0) { alert('数量を1つ以上入力してください（例：1）'); return; }
+  const costsArr = costsRaw.split(/[,、]/).map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+  if(costsArr.length === 0) { alert('消費ポイントを入力してください（例：40）'); return; }
+  // costsが1つの場合は全オプションに適用、複数の場合は対応するインデックスを使用
+  const costs = opts.map((_, i) => costsArr[i] !== undefined ? costsArr[i] : costsArr[costsArr.length-1]);
   const rewards = getRewards().slice();
   if(rwEditIdx===-1) {
-    rewards.push({ name, opts, unit });
+    rewards.push({ name, opts, costs, unit });
   } else {
-    rewards[rwEditIdx] = { name, opts, unit };
+    rewards[rwEditIdx] = { name, opts, costs, unit };
   }
   saveRewards(rewards); cm('mRwEdit'); renderSettings();
 }
